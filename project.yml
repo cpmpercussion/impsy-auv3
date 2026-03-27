@@ -1,0 +1,139 @@
+name: IMPSY-AUv3
+options:
+  bundleIdPrefix: au.com.charlesmartin.impsy
+  deploymentTarget:
+    iOS: "17.0"
+    macOS: "14.0"
+  xcodeVersion: "16.0"
+  swift: "5.9"
+  generateEmptyDirectories: true
+  postGenCommand: echo "Project generated. See README.md to add TFLite dependency."
+
+# NOTE: After generating, add TFLite via File → Add Package Dependencies in Xcode.
+# Recommended: https://github.com/google-ai-edge/LiteRT  product: LiteRT
+# Then change `import TensorFlowLite` to `import LiteRT` in TFLiteRNN.swift
+
+targets:
+
+  # ── iOS Host App ──────────────────────────────────────────────────────────────
+  IMPSYHost-iOS:
+    type: application
+    platform: iOS
+    sources:
+      - path: IMPSYHost/iOS
+        excludes: ["Info.plist"]
+      - path: IMPSYUI
+    dependencies:
+      - target: IMPSYExtension-iOS
+        embed: true
+        codeSign: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: au.com.charlesmartin.impsy.host
+        INFOPLIST_FILE: IMPSYHost/iOS/Info.plist
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_VERSION: "5.9"
+    info:
+      path: IMPSYHost/iOS/Info.plist
+      properties:
+        CFBundleDisplayName: IMPSY
+        UIRequiredDeviceCapabilities: [arm64]
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+          - UIInterfaceOrientationPortrait
+        NSDocumentsFolderUsageDescription: "IMPSY loads TFLite model files from your Files app."
+
+  # ── macOS Host App ────────────────────────────────────────────────────────────
+  IMPSYHost-macOS:
+    type: application
+    platform: macOS
+    sources:
+      - path: IMPSYHost/macOS
+        excludes: ["Info.plist"]
+      - path: IMPSYUI
+    dependencies:
+      - target: IMPSYExtension-macOS
+        embed: true
+        codeSign: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: au.com.charlesmartin.impsy.host
+        INFOPLIST_FILE: IMPSYHost/macOS/Info.plist
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_VERSION: "5.9"
+    info:
+      path: IMPSYHost/macOS/Info.plist
+      properties:
+        CFBundleName: IMPSY
+        NSDocumentsFolderUsageDescription: "IMPSY loads TFLite model files from your Files app."
+        LSMinimumSystemVersion: "$(MACOSX_DEPLOYMENT_TARGET)"
+    entitlements:
+      path: IMPSYHost/macOS/IMPSYHost_macOS.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.files.user-selected.read-only: true
+        com.apple.security.temporary-exception.audio-unit-host: true
+
+  # ── iOS AUv3 Extension ────────────────────────────────────────────────────────
+  IMPSYExtension-iOS:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: IMPSYExtension/Common
+      - path: IMPSYExtension/iOS
+        excludes: ["IMPSYExtension_iOS-Info.plist"]
+      - path: IMPSYUI
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: au.com.charlesmartin.impsy.extension
+        INFOPLIST_FILE: IMPSYExtension/iOS/IMPSYExtension_iOS-Info.plist
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_VERSION: "5.9"
+        # Required for TFLite on iOS
+        OTHER_LDFLAGS: "-ObjC"
+    entitlements:
+      path: IMPSYExtension/iOS/IMPSYExtension_iOS.entitlements
+      properties:
+        com.apple.security.files.user-selected.read-only: true
+
+  # ── macOS AUv3 Extension ──────────────────────────────────────────────────────
+  IMPSYExtension-macOS:
+    type: app-extension
+    platform: macOS
+    sources:
+      - path: IMPSYExtension/Common
+      - path: IMPSYExtension/macOS
+        excludes: ["IMPSYExtension_macOS-Info.plist"]
+      - path: IMPSYUI
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: au.com.charlesmartin.impsy.extension
+        INFOPLIST_FILE: IMPSYExtension/macOS/IMPSYExtension_macOS-Info.plist
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_VERSION: "5.9"
+        OTHER_LDFLAGS: "-ObjC"
+    entitlements:
+      path: IMPSYExtension/macOS/IMPSYExtension_macOS.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.files.user-selected.read-only: true
+
+  # ── Unit Tests ────────────────────────────────────────────────────────────────
+  IMPSYTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - Tests
+      - path: IMPSYExtension/Common
+        excludes:
+          # Exclude AU-specific files that need entitlements/framework
+          - "IMPSYAudioUnit*.swift"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: au.com.charlesmartin.impsy.tests
+        SWIFT_VERSION: "5.9"
