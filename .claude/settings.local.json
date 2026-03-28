@@ -21,7 +21,9 @@
       "Bash(git commit:*)",
       "WebSearch",
       "WebFetch(domain:ai.google.dev)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(git push:*)",
+      "Bash(ls ../impsy/models/*.tflite)"
     ]
   }
 }

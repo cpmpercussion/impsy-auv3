@@ -27,6 +27,14 @@ targets:
     sources:
       - path: IMPSYHost/iOS
         excludes: ["Info.plist"]
+      # Compile AU logic directly into the host so it can be instantiated
+      # without auriserver (iOS does not allow bundle.load() on .appex files
+      # and has no loadInProcess option, so the extension mechanism is only
+      # usable once auriserver scans it — which is unreliable in development).
+      - path: IMPSYExtension/Common
+      - path: IMPSYUI
+    resources:
+      - path: Resources
     dependencies:
       - target: IMPSYExtension-iOS
         embed: true
@@ -40,6 +48,7 @@ targets:
         MARKETING_VERSION: "1.0"
         CURRENT_PROJECT_VERSION: "1"
         SWIFT_VERSION: "5.9"
+        OTHER_LDFLAGS: "-ObjC"
     info:
       path: IMPSYHost/iOS/Info.plist
       properties:

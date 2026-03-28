@@ -1,37 +1,32 @@
 import UIKit
-import AVFoundation
 import AudioToolbox
 import CoreAudioKit
 
 // MARK: - HostViewController
 //
-// Minimal host app that loads the IMPSY AUv3 extension and presents its UI.
-// In normal use, IMPSY runs inside a proper MIDI host (AUM, etc.).
-// This app just satisfies the App Store requirement for AUv3 container apps.
+// Container app that loads IMPSY directly in-process.
+//
+// iOS does not provide loadInProcess for AUv3, and bundle.load() is
+// rejected for .appex files. auriserver registration is asynchronous
+// and unreliable in development. Compiling IMPSYAudioUnit into the
+// host target and instantiating it directly is the correct solution.
+//
+// The embedded IMPSYExtension-iOS.appex is still present for external
+// MIDI hosts (AUM, etc.) to use once auriserver registers it.
 
 final class HostViewController: UIViewController {
 
-    private var audioUnit: AUAudioUnit?
-    private var auViewController: UIViewController?
+    private var audioUnit: IMPSYAudioUnit?
     private let statusLabel = UILabel()
 
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemBackground
-        setupUI()
+        setupStatusLabel()
         loadAudioUnit()
     }
 
-    private func setupUI() {
-        statusLabel.text = "Loading IMPSY AUv3…"
-        statusLabel.textAlignment = .center
-        statusLabel.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(statusLabel)
-        NSLayoutConstraint.activate([
-            statusLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            statusLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor)
-        ])
-    }
+    // MARK: - AU Loading
 
     private func loadAudioUnit() {
         let desc = AudioComponentDescription(
@@ -42,25 +37,34 @@ final class HostViewController: UIViewController {
             componentFlagsMask:    0
         )
 
-        AUAudioUnit.instantiate(with: desc, options: .loadOutOfProcess) { [weak self] auAudioUnit, error in
-            DispatchQueue.main.async {
-                guard let self else { return }
-                if let error {
-                    self.statusLabel.text = "Failed to load AU: \(error.localizedDescription)"
-                    return
-                }
-                guard let auAudioUnit else {
-                    self.statusLabel.text = "Failed to load AU"
-                    return
-                }
-                self.audioUnit = auAudioUnit
-                auAudioUnit.requestViewController { [weak self] viewController in
-                    guard let self, let vc = viewController else { return }
-                    self.statusLabel.removeFromSuperview()
-                    self.embed(viewController: vc)
-                }
-            }
+        do {
+            let au = try IMPSYAudioUnit(componentDescription: desc, options: [])
+            audioUnit = au
+
+            let vc = IMPSYViewController()
+            vc.audioUnit = au
+            statusLabel.removeFromSuperview()
+            embed(viewController: vc)
+        } catch {
+            statusLabel.text = "Failed to create IMPSY AU:\n\(error.localizedDescription)"
+            print("[IMPSY] AU init failed: \(error)")
         }
+    }
+
+    // MARK: - UI
+
+    private func setupStatusLabel() {
+        statusLabel.text = "Loading IMPSY AUv3…"
+        statusLabel.textAlignment = .center
+        statusLabel.numberOfLines = 0
+        statusLabel.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(statusLabel)
+        NSLayoutConstraint.activate([
+            statusLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            statusLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            statusLabel.leadingAnchor.constraint(greaterThanOrEqualTo: view.leadingAnchor, constant: 24),
+            statusLabel.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -24)
+        ])
     }
 
     private func embed(viewController: UIViewController) {
@@ -74,7 +78,6 @@ final class HostViewController: UIViewController {
             viewController.view.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor)
         ])
         viewController.didMove(toParent: self)
-        auViewController = viewController
     }
 }
 

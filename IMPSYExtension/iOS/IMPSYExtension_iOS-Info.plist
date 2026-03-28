@@ -44,15 +44,6 @@
 						<string>MIDI</string>
 						<string>Machine Learning</string>
 					</array>
-					<key>resourceUsage</key>
-					<dict>
-						<key>iokit.user-client-class</key>
-						<array/>
-						<key>network.client</key>
-						<false/>
-						<key>temporary-exception.files.all.read-write</key>
-						<false/>
-					</dict>
 				</dict>
 			</array>
 		</dict>
