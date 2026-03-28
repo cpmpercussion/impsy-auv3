@@ -91,6 +91,8 @@ targets:
       - path: IMPSYExtension/iOS
         excludes: ["IMPSYExtension_iOS-Info.plist"]
       - path: IMPSYUI
+    resources:
+      - path: Resources
     dependencies:
       - package: TensorFlowLiteSwift
       - sdk: CoreML.framework
@@ -117,6 +119,8 @@ targets:
       - path: IMPSYExtension/macOS
         excludes: ["IMPSYExtension_macOS-Info.plist"]
       - path: IMPSYUI
+    resources:
+      - path: Resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: au.com.charlesmartin.impsy.host.extension

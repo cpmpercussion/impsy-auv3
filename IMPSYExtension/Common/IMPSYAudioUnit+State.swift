@@ -95,6 +95,34 @@ extension IMPSYAudioUnit {
         }
     }
 
+    // MARK: - Bundled Default Model
+
+    static let defaultModelName = "musicMDRNN-dim9-layers2-units64-mixtures5-scale10"
+
+    /// Loads the bundled default 9D model from the extension's resource bundle.
+    func loadBundledDefaultModel() {
+        let bundle = Bundle(for: IMPSYAudioUnit.self)
+        guard let url = bundle.url(forResource: Self.defaultModelName, withExtension: "tflite") else {
+            return
+        }
+        do {
+            let config = try ModelInspector.inspect(modelURL: url)
+            _currentModelConfig      = config
+            _currentModelDisplayName = url.lastPathComponent
+            var updated = _currentMappings
+            updated.resize(toModelDimension: config.dimension)
+            _currentMappings = updated
+            engine.updateMappings(updated)
+            engine.loadModel(url: url, config: config)
+            NotificationCenter.default.post(name: .IMPSYModelStatusChanged, object: self,
+                                            userInfo: ["status": "ready",
+                                                       "config": config,
+                                                       "name": url.lastPathComponent])
+        } catch {
+            // Bundled model failed to load — continue without a model
+        }
+    }
+
     // MARK: - Private Helpers
 
     private func buildFullState() -> [String: Any] {
@@ -159,10 +187,12 @@ extension IMPSYAudioUnit {
         // Restore display name
         _currentModelDisplayName = state[StateKey.modelURLString] as? String
 
-        // Restore model from bookmark
+        // Restore model from bookmark, or fall back to bundled default
         if let bookmark = state[StateKey.modelBookmark] as? Data {
             _modelBookmarkData = bookmark
             resolveAndLoadModel(from: bookmark)
+        } else {
+            loadBundledDefaultModel()
         }
     }
 

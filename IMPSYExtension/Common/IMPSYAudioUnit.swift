@@ -38,6 +38,7 @@ public final class IMPSYAudioUnit: AUAudioUnit {
 
         setupParameterTree()
         setupEngineCallbacks()
+        loadBundledDefaultModel()
     }
 
     // MARK: - AUAudioUnit Overrides
