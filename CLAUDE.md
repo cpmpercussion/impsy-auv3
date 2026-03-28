@@ -9,10 +9,10 @@ AUv3 MIDI Processor plugin (type: `aumi`) for iOS 17+ and macOS 14+ that runs [I
 xcodegen generate
 ```
 
-**TFLite dependency** — add manually in Xcode after generating:
-- File → Add Package Dependencies → `https://github.com/kewlbear/TensorFlowLiteSwift.git` (select `master` branch)
-- Add to both `IMPSYExtension-iOS` and `IMPSYExtension-macOS` targets
-- Use `import TensorFlowLite` in `TFLiteRNN.swift` and `ModelInspector.swift` (no change needed)
+**TFLite dependency** — declared in `project.yml` (`packages:` section), resolved automatically by Xcode on first open. No manual steps needed after `xcodegen generate`.
+- Package: `https://github.com/kewlbear/TensorFlowLiteSwift.git` (branch: `master`)
+- Linked to: `IMPSYExtension-iOS`, `IMPSYExtension-macOS`, `IMPSYHost-iOS` (host must embed it so the iOS extension can load it)
+- Use `import TensorFlowLite` in `TFLiteRNN.swift` and `ModelInspector.swift`
 - Note: `https://github.com/google-ai-edge/LiteRT` does NOT have a `Package.swift` and cannot be used as an SPM dependency
 
 **Signing** — set Development Team on all 4 targets in Xcode after generating.

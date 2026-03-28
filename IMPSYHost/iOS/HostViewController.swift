@@ -11,7 +11,7 @@ import CoreAudioKit
 
 final class HostViewController: UIViewController {
 
-    private var audioUnit: IMPSYAudioUnit?
+    private var audioUnit: AUAudioUnit?
     private var auViewController: UIViewController?
     private let statusLabel = UILabel()
 
@@ -49,8 +49,8 @@ final class HostViewController: UIViewController {
                     self.statusLabel.text = "Failed to load AU: \(error.localizedDescription)"
                     return
                 }
-                guard let auAudioUnit = auAudioUnit as? IMPSYAudioUnit else {
-                    self.statusLabel.text = "Unexpected AU type"
+                guard let auAudioUnit else {
+                    self.statusLabel.text = "Failed to load AU"
                     return
                 }
                 self.audioUnit = auAudioUnit

@@ -4,7 +4,7 @@ import CoreAudioKit
 
 final class HostWindowController: NSWindowController {
 
-    private var audioUnit: IMPSYAudioUnit?
+    private var audioUnit: AUAudioUnit?
 
     convenience init() {
         let window = NSWindow(
@@ -35,7 +35,7 @@ final class HostWindowController: NSWindowController {
                     self.window?.title = "IMPSY — Load error: \(error.localizedDescription)"
                     return
                 }
-                guard let au = auAudioUnit as? IMPSYAudioUnit else { return }
+                guard let au = auAudioUnit else { return }
                 self.audioUnit = au
                 au.requestViewController { [weak self] viewController in
                     guard let self, let vc = viewController else { return }

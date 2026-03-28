@@ -13,6 +13,11 @@ options:
 # Recommended: https://github.com/google-ai-edge/LiteRT  product: LiteRT
 # Then change `import TensorFlowLite` to `import LiteRT` in TFLiteRNN.swift
 
+packages:
+  TensorFlowLiteSwift:
+    url: https://github.com/kewlbear/TensorFlowLiteSwift.git
+    branch: master
+
 targets:
 
   # ── iOS Host App ──────────────────────────────────────────────────────────────
@@ -22,11 +27,12 @@ targets:
     sources:
       - path: IMPSYHost/iOS
         excludes: ["Info.plist"]
-      - path: IMPSYUI
     dependencies:
       - target: IMPSYExtension-iOS
         embed: true
         codeSign: true
+      - package: TensorFlowLiteSwift
+      - sdk: CoreML.framework
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: au.com.charlesmartin.impsy.host
@@ -52,7 +58,6 @@ targets:
     sources:
       - path: IMPSYHost/macOS
         excludes: ["Info.plist"]
-      - path: IMPSYUI
     dependencies:
       - target: IMPSYExtension-macOS
         embed: true
@@ -86,9 +91,12 @@ targets:
       - path: IMPSYExtension/iOS
         excludes: ["IMPSYExtension_iOS-Info.plist"]
       - path: IMPSYUI
+    dependencies:
+      - package: TensorFlowLiteSwift
+      - sdk: CoreML.framework
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: au.com.charlesmartin.impsy.extension
+        PRODUCT_BUNDLE_IDENTIFIER: au.com.charlesmartin.impsy.host.extension
         INFOPLIST_FILE: IMPSYExtension/iOS/IMPSYExtension_iOS-Info.plist
         MARKETING_VERSION: "1.0"
         CURRENT_PROJECT_VERSION: "1"
@@ -111,7 +119,7 @@ targets:
       - path: IMPSYUI
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: au.com.charlesmartin.impsy.extension
+        PRODUCT_BUNDLE_IDENTIFIER: au.com.charlesmartin.impsy.host.extension
         INFOPLIST_FILE: IMPSYExtension/macOS/IMPSYExtension_macOS-Info.plist
         MARKETING_VERSION: "1.0"
         CURRENT_PROJECT_VERSION: "1"

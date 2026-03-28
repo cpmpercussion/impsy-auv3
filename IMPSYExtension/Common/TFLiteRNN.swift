@@ -1,7 +1,23 @@
 import Foundation
+
+// MARK: - TFLiteRNN errors (shared across platforms)
+
+enum TFLiteRNNError: Error, LocalizedError {
+    case tensorNotFound(String)
+    case shapeMismatch(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .tensorNotFound(let name): return "TFLite tensor '\(name)' not found"
+        case .shapeMismatch(let msg):   return "Tensor shape mismatch: \(msg)"
+        }
+    }
+}
+
+#if os(iOS)
 import TensorFlowLite
 
-// MARK: - TFLiteRNN
+// MARK: - TFLiteRNN (iOS)
 //
 // Wraps the TFLite Interpreter for single-step IMPSY MDRNN inference.
 //
@@ -225,16 +241,23 @@ final class TFLiteRNN {
     }
 }
 
-// MARK: - Errors
+#else
 
-enum TFLiteRNNError: Error, LocalizedError {
-    case tensorNotFound(String)
-    case shapeMismatch(String)
+// MARK: - TFLiteRNN (macOS stub — TFLite xcframework is iOS-only)
 
-    var errorDescription: String? {
-        switch self {
-        case .tensorNotFound(let name): return "TFLite tensor '\(name)' not found"
-        case .shapeMismatch(let msg):   return "Tensor shape mismatch: \(msg)"
-        }
+final class TFLiteRNN {
+    let config: ModelConfig
+
+    init(modelURL: URL, config: ModelConfig) throws {
+        self.config = config
+        throw TFLiteRNNError.tensorNotFound("TFLite inference is not available on macOS")
     }
+
+    func generate(input: [Float], piTemp: Float, sigmaTemp: Float) throws -> [Float] {
+        throw TFLiteRNNError.tensorNotFound("TFLite inference is not available on macOS")
+    }
+
+    func resetStates() {}
 }
+
+#endif
