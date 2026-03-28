@@ -17,7 +17,11 @@
       "Bash(xcodebuild -project IMPSY-AUv3.xcodeproj -scheme IMPSYHost-macOS -destination 'platform=macOS' build)",
       "Bash(xcodebuild -runFirstLaunch)",
       "Bash(xcodebuild -project IMPSY-AUv3.xcodeproj -scheme IMPSYExtension-macOS -destination 'platform=macOS' build)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "WebSearch",
+      "WebFetch(domain:ai.google.dev)",
+      "WebFetch(domain:github.com)"
     ]
   }
 }

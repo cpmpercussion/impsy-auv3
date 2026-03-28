@@ -15,7 +15,13 @@ public final class IMPSYAudioUnit: AUAudioUnit {
     // MARK: - Properties
 
     private(set) var engine: InteractionEngine
-    private var parameterTree_: AUParameterTree!
+    var parameterTree_: AUParameterTree!
+
+    // Non-parameter state (owned here; exposed via computed vars in +State extension)
+    var _modelBookmarkData: Data?
+    var _currentMappings = MIDIMappingSet.defaults(forModelDimension: 2)
+    var _currentModelConfig: ModelConfig?
+    var _currentModelDisplayName: String?
 
     /// Cached midiOutputEventBlock — captured in allocateRenderResources, used in render block.
     private var cachedMidiOutputBlock: AUMIDIOutputEventBlock?
@@ -80,7 +86,7 @@ public final class IMPSYAudioUnit: AUAudioUnit {
 
     public override var internalRenderBlock: AUInternalRenderBlock {
         let outputBuf = engine.outputBuffer
-        return { [weak self] actionFlags, timestamp, frameCount, outputBusNumber, outputData, pullInputBlock in
+        return { [weak self] actionFlags, timestamp, frameCount, outputBusNumber, outputData, renderEvents, pullInputBlock in
             guard let midiOut = self?.cachedMidiOutputBlock else { return noErr }
             // Drain any MIDI output events queued by the inference engine
             let packets = outputBuf.dequeueAll()

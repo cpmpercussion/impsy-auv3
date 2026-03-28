@@ -10,7 +10,7 @@ import Foundation
 
 extension IMPSYAudioUnit {
 
-    // MARK: - Stored non-parameter state
+    // MARK: - Stored non-parameter state (backing storage lives in IMPSYAudioUnit.swift)
 
     /// Security-scoped bookmark for the loaded model file.
     /// Persisted across sessions; resolved on fullState restore.
@@ -23,7 +23,6 @@ extension IMPSYAudioUnit {
             }
         }
     }
-    private var _modelBookmarkData: Data?
 
     var currentMappings: MIDIMappingSet {
         get { _currentMappings }
@@ -32,13 +31,10 @@ extension IMPSYAudioUnit {
             engine.updateMappings(newValue)
         }
     }
-    private var _currentMappings = MIDIMappingSet.defaults(forModelDimension: 2)
 
     var currentModelConfig: ModelConfig? { _currentModelConfig }
-    private var _currentModelConfig: ModelConfig?
 
     var currentModelDisplayName: String? { _currentModelDisplayName }
-    private var _currentModelDisplayName: String?
 
     // MARK: - fullState Override
 

@@ -5,7 +5,7 @@ import CoreAudioKit
 
 extension IMPSYAudioUnit {
 
-    public override func requestViewController(completionHandler: @escaping (AUViewControllerBase?) -> Void) {
+    public override func requestViewController(completionHandler: @escaping (AUViewController?) -> Void) {
         DispatchQueue.main.async {
             let vc = IMPSYViewController()
             vc.audioUnit = self

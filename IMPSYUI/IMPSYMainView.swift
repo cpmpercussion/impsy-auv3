@@ -7,7 +7,7 @@ import CoreAudioKit
 public struct IMPSYMainView: View {
     @ObservedObject var viewModel: IMPSYViewModel
 
-    public init(viewModel: IMPSYViewModel) {
+    init(viewModel: IMPSYViewModel) {
         self.viewModel = viewModel
     }
 

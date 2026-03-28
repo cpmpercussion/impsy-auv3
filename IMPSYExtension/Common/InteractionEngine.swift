@@ -144,7 +144,7 @@ final class InteractionEngine: @unchecked Sendable {
             }
         }
 
-        let now = CACurrentMediaTime()
+        let now = ProcessInfo.processInfo.systemUptime
         if gotUserInput {
             lastUserInputTime = now
         }

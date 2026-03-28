@@ -26,7 +26,7 @@ struct RawMIDIPacket {
 
     func withUnsafeBytes<T>(_ body: (UnsafePointer<UInt8>, Int) -> T) -> T {
         var b = bytes
-        return withUnsafeBytes(of: &b) { raw in
+        return Swift.withUnsafeBytes(of: &b) { raw in
             body(raw.baseAddress!.assumingMemoryBound(to: UInt8.self), length)
         }
     }

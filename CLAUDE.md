@@ -10,9 +10,10 @@ xcodegen generate
 ```
 
 **TFLite dependency** — add manually in Xcode after generating:
-- File → Add Package Dependencies → `https://github.com/google-ai-edge/LiteRT`
+- File → Add Package Dependencies → `https://github.com/kewlbear/TensorFlowLiteSwift.git` (select `master` branch)
 - Add to both `IMPSYExtension-iOS` and `IMPSYExtension-macOS` targets
-- If using the `LiteRT` package, change `import TensorFlowLite` → `import LiteRT` in `TFLiteRNN.swift` and `ModelInspector.swift`
+- Use `import TensorFlowLite` in `TFLiteRNN.swift` and `ModelInspector.swift` (no change needed)
+- Note: `https://github.com/google-ai-edge/LiteRT` does NOT have a `Package.swift` and cannot be used as an SPM dependency
 
 **Signing** — set Development Team on all 4 targets in Xcode after generating.
 
