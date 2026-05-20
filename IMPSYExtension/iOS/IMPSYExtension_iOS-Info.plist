@@ -50,7 +50,7 @@
 		<key>NSExtensionPointIdentifier</key>
 		<string>com.apple.AudioUnit-UI</string>
 		<key>NSExtensionPrincipalClass</key>
-		<string>$(PRODUCT_MODULE_NAME).IMPSYAudioUnit</string>
+		<string>$(PRODUCT_MODULE_NAME).IMPSYViewController</string>
 	</dict>
 </dict>
 </plist>

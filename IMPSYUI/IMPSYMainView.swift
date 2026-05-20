@@ -176,7 +176,7 @@ private struct PredictionLED: View {
 #if os(iOS)
 import UIKit
 
-public final class IMPSYViewController: AUViewController {
+public final class IMPSYViewController: AUViewController, AUAudioUnitFactory {
 
     private let viewModel = IMPSYViewModel()
 
@@ -205,12 +205,23 @@ public final class IMPSYViewController: AUViewController {
         hc.didMove(toParent: self)
         preferredContentSize = CGSize(width: 400, height: 560)
     }
+
+    /// `AUAudioUnitFactory` entry point. The AUv3 host (AUM, GarageBand, …)
+    /// instantiates this view controller as the extension's principal class,
+    /// then calls this to create the audio unit.
+    public func createAudioUnit(
+        with componentDescription: AudioComponentDescription
+    ) throws -> AUAudioUnit {
+        let au = try IMPSYAudioUnit(componentDescription: componentDescription, options: [])
+        audioUnit = au
+        return au
+    }
 }
 
 #elseif os(macOS)
 import AppKit
 
-public final class IMPSYViewController: AUViewController {
+public final class IMPSYViewController: AUViewController, AUAudioUnitFactory {
 
     private let viewModel = IMPSYViewModel()
 
@@ -237,6 +248,17 @@ public final class IMPSYViewController: AUViewController {
             hc.view.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
         preferredContentSize = CGSize(width: 400, height: 560)
+    }
+
+    /// `AUAudioUnitFactory` entry point. The AUv3 host instantiates this view
+    /// controller as the extension's principal class, then calls this to
+    /// create the audio unit.
+    public func createAudioUnit(
+        with componentDescription: AudioComponentDescription
+    ) throws -> AUAudioUnit {
+        let au = try IMPSYAudioUnit(componentDescription: componentDescription, options: [])
+        audioUnit = au
+        return au
     }
 }
 #endif

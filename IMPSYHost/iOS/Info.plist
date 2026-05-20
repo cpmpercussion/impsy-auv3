@@ -22,6 +22,8 @@
 	<string>1</string>
 	<key>NSDocumentsFolderUsageDescription</key>
 	<string>IMPSY loads TFLite model files from your Files app.</string>
+	<key>UILaunchScreen</key>
+	<dict/>
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
 		<string>arm64</string>
