@@ -64,6 +64,9 @@ targets:
           - UIInterfaceOrientationLandscapeRight
           - UIInterfaceOrientationPortrait
         NSDocumentsFolderUsageDescription: "IMPSY loads TFLite model files from your Files app."
+        # An (empty) launch screen tells iOS the app supports native screen
+        # sizes. Without it the app runs letterboxed in compatibility mode.
+        UILaunchScreen: {}
 
   # ── macOS Host App ────────────────────────────────────────────────────────────
   IMPSYHost-macOS:

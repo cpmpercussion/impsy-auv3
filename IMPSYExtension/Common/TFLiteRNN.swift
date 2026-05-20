@@ -17,6 +17,23 @@ enum TFLiteRNNError: Error, LocalizedError {
 #if os(iOS)
 import TensorFlowLite
 
+// MARK: - Interpreter warm-up
+//
+// TFLite does not resolve output tensor shapes until the graph has executed at
+// least once. Any code that inspects output tensors (ModelInspector, and
+// TFLiteRNN's own tensor discovery) must run this first.
+
+func warmUpInterpreter(_ interpreter: Interpreter) throws {
+    for i in 0..<interpreter.inputTensorCount {
+        let tensor = try interpreter.input(at: i)
+        let count  = tensor.shape.dimensions.reduce(1, *)
+        let zeros  = [Float](repeating: 0, count: count)
+        let data   = zeros.withUnsafeBufferPointer { Data(buffer: $0) }
+        try interpreter.copy(data, toInputAt: i)
+    }
+    try interpreter.invoke()
+}
+
 // MARK: - TFLiteRNN (iOS)
 //
 // Wraps the TFLite Interpreter for single-step IMPSY MDRNN inference.
@@ -62,6 +79,8 @@ final class TFLiteRNN {
         let options = Interpreter.Options()
         self.interpreter = try Interpreter(modelPath: modelURL.path, options: options)
         try interpreter.allocateTensors()
+        // Output tensor shapes are only valid after the graph has run once.
+        try warmUpInterpreter(interpreter)
         try discoverTensorIndices()
     }
 

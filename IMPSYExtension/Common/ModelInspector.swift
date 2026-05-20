@@ -46,8 +46,24 @@ enum ModelInspector {
         do {
             interpreter = try Interpreter(modelPath: modelURL.path)
             try interpreter.allocateTensors()
+            // Output tensor shapes are only valid after the graph has run once.
+            try warmUpInterpreter(interpreter)
         } catch {
             throw InspectionError.failedToLoad(error.localizedDescription)
+        }
+
+        // ── Diagnostic: log the full tensor inventory ─────────────────────────
+        for i in 0..<interpreter.inputTensorCount {
+            if let t = try? interpreter.input(at: i) {
+                NSLog("[IMPSY] inspect input[%d] name=%@ shape=%@", i, t.name,
+                      String(describing: t.shape.dimensions))
+            }
+        }
+        for i in 0..<interpreter.outputTensorCount {
+            if let t = try? interpreter.output(at: i) {
+                NSLog("[IMPSY] inspect output[%d] name=%@ shape=%@", i, t.name,
+                      String(describing: t.shape.dimensions))
+            }
         }
 
         // ── Find dimension from 'inputs' tensor shape ─────────────────────────

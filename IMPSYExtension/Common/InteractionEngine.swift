@@ -104,8 +104,10 @@ final class InteractionEngine: @unchecked Sendable {
                 self.responseGeneration &+= 1
                 self.callResponseState = .call
                 self.lastUserInputTime = ProcessInfo.processInfo.systemUptime
+                NSLog("[IMPSY] InteractionEngine: RNN ready for %@", url.lastPathComponent)
             } catch {
-                print("[IMPSY] Failed to load model: \(error)")
+                NSLog("[IMPSY] InteractionEngine: failed to load model: %@",
+                      String(describing: error))
                 self.rnn = nil
             }
         }

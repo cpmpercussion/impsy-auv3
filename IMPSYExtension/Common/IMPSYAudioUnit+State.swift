@@ -103,6 +103,11 @@ extension IMPSYAudioUnit {
     func loadBundledDefaultModel() {
         let bundle = Bundle(for: IMPSYAudioUnit.self)
         guard let url = bundle.url(forResource: Self.defaultModelName, withExtension: "tflite") else {
+            NSLog("[IMPSY] Bundled model '%@.tflite' not found in %@",
+                  Self.defaultModelName, bundle.bundlePath)
+            NotificationCenter.default.post(name: .IMPSYModelStatusChanged, object: self,
+                                            userInfo: ["status": "error",
+                                                       "message": "Bundled model not found in app bundle"])
             return
         }
         do {
@@ -119,12 +124,18 @@ extension IMPSYAudioUnit {
             _currentMappings = updated
             engine.updateMappings(updated)
             engine.loadModel(url: url, config: config)
+            NSLog("[IMPSY] Loaded bundled model %@ (dim=%d layers=%d units=%d mixtures=%d)",
+                  url.lastPathComponent, config.dimension, config.numLayers,
+                  config.hiddenUnits, config.numMixtures)
             NotificationCenter.default.post(name: .IMPSYModelStatusChanged, object: self,
                                             userInfo: ["status": "ready",
                                                        "config": config,
                                                        "name": url.lastPathComponent])
         } catch {
-            // Bundled model failed to load — continue without a model
+            NSLog("[IMPSY] Failed to load bundled model: %@", String(describing: error))
+            NotificationCenter.default.post(name: .IMPSYModelStatusChanged, object: self,
+                                            userInfo: ["status": "error",
+                                                       "message": error.localizedDescription])
         }
     }
 
