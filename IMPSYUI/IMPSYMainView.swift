@@ -23,7 +23,10 @@ public struct IMPSYMainView: View {
             .padding(16)
         }
         .background(platformBackground)
+        #if os(macOS)
+        // Give the macOS window a sensible minimum; iOS adapts to its host.
         .frame(minWidth: 380, minHeight: 520)
+        #endif
     }
 
     // MARK: - Sections

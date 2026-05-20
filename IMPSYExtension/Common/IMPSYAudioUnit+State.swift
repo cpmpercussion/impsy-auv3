@@ -109,7 +109,12 @@ extension IMPSYAudioUnit {
             let config = try ModelInspector.inspect(modelURL: url)
             _currentModelConfig      = config
             _currentModelDisplayName = url.lastPathComponent
-            var updated = _currentMappings
+            // The bundled model is the 9-dimension MDRNN; give it the AiC
+            // U6MIDI Pro mapping by default. Other dimensions fall back to
+            // generic per-dimension defaults.
+            var updated = config.dimension == 9
+                ? MIDIMappingSet.aicU6MIDIProDefault()
+                : _currentMappings
             updated.resize(toModelDimension: config.dimension)
             _currentMappings = updated
             engine.updateMappings(updated)

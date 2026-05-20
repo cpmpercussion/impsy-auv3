@@ -64,6 +64,32 @@ struct MIDIMappingSet: Codable, Equatable {
         )
     }
 
+    /// Default mapping for the bundled 9-dimension IMPSY model, ported from
+    /// `configs/AiC-charles-u6midipro.toml` in the IMPSY repository.
+    ///
+    /// Input  — eight nanoKONTROL Studio knobs: CC 13–20 on channel 1.
+    /// Output — alternating note / CC pairs: note_on on channels 1–4,
+    ///          control_change CC 1–4 on channel 11.
+    static func aicU6MIDIProDefault() -> MIDIMappingSet {
+        let input: [DimensionMapping] = (0..<8).map { i in
+            DimensionMapping(id: i + 1, messageType: .controlChange,
+                             channel: 1, number: 13 + i)
+        }
+        // Output dimensions interleave note_on and control_change.
+        let output: [DimensionMapping] = (0..<8).map { i in
+            if i.isMultiple(of: 2) {
+                // dims 1,3,5,7 → note_on on channels 1,2,3,4
+                return DimensionMapping(id: i + 1, messageType: .noteOn,
+                                        channel: i / 2 + 1, number: 60)
+            } else {
+                // dims 2,4,6,8 → control_change CC 1,2,3,4 on channel 11
+                return DimensionMapping(id: i + 1, messageType: .controlChange,
+                                        channel: 11, number: i / 2 + 1)
+            }
+        }
+        return MIDIMappingSet(inputMappings: input, outputMappings: output)
+    }
+
     /// Resize mappings to match a new model dimension, preserving existing entries.
     mutating func resize(toModelDimension dimension: Int) {
         let count = max(0, dimension - 1)

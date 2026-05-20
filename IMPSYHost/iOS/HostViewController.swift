@@ -71,11 +71,14 @@ final class HostViewController: UIViewController {
         addChild(viewController)
         viewController.view.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(viewController.view)
+        // Pin to the full view (not the safe area): the SwiftUI ScrollView
+        // insets its own content for the safe area, so the background fills
+        // the screen edge-to-edge while controls stay clear of the notch.
         NSLayoutConstraint.activate([
-            viewController.view.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            viewController.view.topAnchor.constraint(equalTo: view.topAnchor),
             viewController.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             viewController.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            viewController.view.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor)
+            viewController.view.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
         viewController.didMove(toParent: self)
     }
