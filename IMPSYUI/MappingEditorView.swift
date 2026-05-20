@@ -87,28 +87,35 @@ private struct MappingRow: View {
                 .frame(width: 22, height: 22)
                 .background(Circle().fill(Color.primary.opacity(0.08)))
 
-            // Message type — flexible width, truncates before the steppers do
-            Picker("", selection: $mapping.messageType) {
-                ForEach(MIDIMessageType.allCases, id: \.self) { type in
-                    Text(type.displayName).tag(type)
+            // Message type. A Menu with a custom label (rather than a .menu
+            // Picker) is used because Picker ignores .font / .lineLimit on its
+            // displayed label — so "Note On" / "Pitch Bend" wrapped onto
+            // multiple lines and overlapped neighbouring rows.
+            Menu {
+                Picker("Message Type", selection: $mapping.messageType) {
+                    ForEach(MIDIMessageType.allCases, id: \.self) { type in
+                        Text(type.displayName).tag(type)
+                    }
                 }
+            } label: {
+                HStack(spacing: 3) {
+                    Text(mapping.messageType.displayName)
+                        .font(.system(.caption, design: .rounded, weight: .medium))
+                        .lineLimit(1)
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.system(size: 8, weight: .semibold))
+                }
+                .foregroundStyle(Color.accentColor)
+                .frame(width: 86, alignment: .leading)
             }
-            .labelsHidden()
-            .pickerStyle(.menu)
-            .frame(maxWidth: .infinity, alignment: .leading)
 
-            // Channel (1–16) and note/CC number (0–127)
+            Spacer(minLength: 0)
+
+            // Channel (1–16). The note/CC number stepper is unlabelled —
+            // the type picker already says which it is.
             CompactStepper(label: "Ch", value: $mapping.channel, range: 1...16)
-            CompactStepper(label: numberLabel, value: $mapping.number,
+            CompactStepper(label: nil, value: $mapping.number,
                            range: 0...127, enabled: mapping.messageType.usesNumber)
-        }
-    }
-
-    private var numberLabel: String {
-        switch mapping.messageType {
-        case .noteOn:        return "Note"
-        case .controlChange: return "CC"
-        case .pitchBend:     return "—"
         }
     }
 }
@@ -118,16 +125,18 @@ private struct MappingRow: View {
 /// A tightly-packed −/value/+ control. Native `Stepper` is too wide to fit
 /// two per row alongside a type picker on a phone-width screen.
 private struct CompactStepper: View {
-    let label: String
+    let label: String?
     @Binding var value: Int
     let range: ClosedRange<Int>
     var enabled: Bool = true
 
     var body: some View {
         HStack(spacing: 4) {
-            Text(label)
-                .font(.system(.caption2, design: .rounded))
-                .foregroundStyle(.secondary)
+            if let label {
+                Text(label)
+                    .font(.system(.caption2, design: .rounded))
+                    .foregroundStyle(.secondary)
+            }
 
             HStack(spacing: 0) {
                 stepButton("minus", active: enabled && value > range.lowerBound) {
