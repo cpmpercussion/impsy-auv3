@@ -26,6 +26,12 @@ public final class IMPSYAudioUnit: AUAudioUnit {
     /// Cached midiOutputEventBlock — captured in allocateRenderResources, used in render block.
     private var cachedMidiOutputBlock: AUMIDIOutputEventBlock?
 
+    /// Audio busses. A MIDI processor produces no audio, but a host — and the
+    /// out-of-process AUv3 bridge in particular — requires a valid output bus,
+    /// otherwise allocateRenderResources fails with -10875.
+    private var _outputBusArray: AUAudioUnitBusArray!
+    private var _inputBusArray:  AUAudioUnitBusArray!
+
     // MARK: - Init
 
     public override init(componentDescription: AudioComponentDescription,
@@ -36,10 +42,22 @@ public final class IMPSYAudioUnit: AUAudioUnit {
 
         try super.init(componentDescription: componentDescription, options: options)
 
+        // A valid output bus is required for the AU to initialise, especially
+        // when loaded out of process. The render block fills it with silence.
+        let format = AVAudioFormat(standardFormatWithSampleRate: 44100, channels: 2)!
+        let outputBus = try AUAudioUnitBus(format: format)
+        _outputBusArray = AUAudioUnitBusArray(audioUnit: self, busType: .output, busses: [outputBus])
+        _inputBusArray  = AUAudioUnitBusArray(audioUnit: self, busType: .input,  busses: [])
+
         setupParameterTree()
         setupEngineCallbacks()
         loadBundledDefaultModel()
     }
+
+    // MARK: - Audio Busses
+
+    public override var inputBusses:  AUAudioUnitBusArray { _inputBusArray }
+    public override var outputBusses: AUAudioUnitBusArray { _outputBusArray }
 
     // MARK: - AUAudioUnit Overrides
 
@@ -88,12 +106,18 @@ public final class IMPSYAudioUnit: AUAudioUnit {
     public override var internalRenderBlock: AUInternalRenderBlock {
         let outputBuf = engine.outputBuffer
         return { [weak self] actionFlags, timestamp, frameCount, outputBusNumber, outputData, renderEvents, pullInputBlock in
-            guard let midiOut = self?.cachedMidiOutputBlock else { return noErr }
-            // Drain any MIDI output events queued by the inference engine
-            let packets = outputBuf.dequeueAll()
-            for packet in packets {
-                packet.withUnsafeBytes { ptr, length in
-                    _ = midiOut(AUEventSampleTimeImmediate, 0, length, ptr)
+            // This AU produces no audio — fill the output bus with silence.
+            for buffer in UnsafeMutableAudioBufferListPointer(outputData) {
+                if let data = buffer.mData {
+                    memset(data, 0, Int(buffer.mDataByteSize))
+                }
+            }
+            // Drain any MIDI output events queued by the inference engine.
+            if let midiOut = self?.cachedMidiOutputBlock {
+                for packet in outputBuf.dequeueAll() {
+                    packet.withUnsafeBytes { ptr, length in
+                        _ = midiOut(AUEventSampleTimeImmediate, 0, length, ptr)
+                    }
                 }
             }
             return noErr
