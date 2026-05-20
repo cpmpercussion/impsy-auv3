@@ -61,6 +61,11 @@ final class InteractionEngine: @unchecked Sendable {
 
     var onStateChanged: ((CallResponseState) -> Void)?
 
+    /// Called on the inference queue each time a response event is emitted,
+    /// with the event's `dt` (seconds) and the MIDI it produced. Used purely
+    /// for UI activity feedback.
+    var onEventGenerated: ((Double, [MIDIEvent]) -> Void)?
+
     // MARK: - Init
 
     init(mappings: MIDIMappingSet) {
@@ -71,7 +76,10 @@ final class InteractionEngine: @unchecked Sendable {
 
     func start() {
         inferenceQueue.async { [weak self] in
-            self?.startTimer()
+            // Idempotent: a real host calls allocateRenderResources() (which
+            // starts the engine); the test host starts it directly.
+            guard let self, self.timer == nil else { return }
+            self.startTimer()
         }
     }
 
@@ -259,6 +267,8 @@ final class InteractionEngine: @unchecked Sendable {
                                   length: event.byteCount)
                 )
             }
+            // …notify the UI…
+            self.onEventGenerated?(dt, events)
             // …then generate the event that follows it.
             self.generateAndScheduleResponse(seed: nextSeed, generation: generation)
         }

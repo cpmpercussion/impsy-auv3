@@ -111,6 +111,20 @@ public final class IMPSYAudioUnit: AUAudioUnit {
                 userInfo: ["state": state.rawValue]
             )
         }
+        engine.onEventGenerated = { [weak self] dt, events in
+            let summary: String
+            if let first = events.first {
+                summary = events.count > 1 ? "\(first.summary) +\(events.count - 1)"
+                                           : first.summary
+            } else {
+                summary = "—"
+            }
+            NotificationCenter.default.post(
+                name: .IMPSYEventGenerated,
+                object: self,
+                userInfo: ["dt": dt, "summary": summary]
+            )
+        }
     }
 }
 
@@ -119,4 +133,5 @@ public final class IMPSYAudioUnit: AUAudioUnit {
 extension Notification.Name {
     static let IMPSYCallResponseStateChanged = Notification.Name("IMPSYCallResponseStateChanged")
     static let IMPSYModelStatusChanged       = Notification.Name("IMPSYModelStatusChanged")
+    static let IMPSYEventGenerated           = Notification.Name("IMPSYEventGenerated")
 }

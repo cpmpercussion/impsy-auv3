@@ -43,6 +43,11 @@ final class IMPSYViewModel: ObservableObject {
     @Published var mappings: MIDIMappingSet = .defaults(forModelDimension: 2)
     @Published var callResponseState: String = "CALL"
 
+    // Live activity feedback from the call-and-response loop
+    @Published var generatedEventCount: Int = 0
+    @Published var lastEventSummary: String = "—"
+    @Published var lastEventDt: Double = 0
+
     // Parameter values (two-way bound to AUParameterTree)
     @Published var threshold: Float = ParameterDefaults.threshold
     @Published var sigmaTemp: Float = ParameterDefaults.sigmaTemp
@@ -104,6 +109,9 @@ final class IMPSYViewModel: ObservableObject {
             mappings    = au.currentMappings
         }
 
+        // Sync the current call/response state (the engine may already be running)
+        callResponseState = au.engine.callResponseState.rawValue
+
         // Listen for model status changes
         let modelToken = NotificationCenter.default.addObserver(
             forName: .IMPSYModelStatusChanged,
@@ -122,7 +130,19 @@ final class IMPSYViewModel: ObservableObject {
             self?.callResponseState = (note.userInfo?["state"] as? String) ?? "CALL"
         }
 
-        notificationTokens = [modelToken, stateToken]
+        // Listen for generated events (live activity feedback)
+        let eventToken = NotificationCenter.default.addObserver(
+            forName: .IMPSYEventGenerated,
+            object: au,
+            queue: .main
+        ) { [weak self] note in
+            guard let self else { return }
+            self.generatedEventCount += 1
+            self.lastEventSummary = (note.userInfo?["summary"] as? String) ?? "—"
+            self.lastEventDt = (note.userInfo?["dt"] as? Double) ?? 0
+        }
+
+        notificationTokens = [modelToken, stateToken, eventToken]
     }
 
     private func handleModelStatusNotification(_ note: Notification) {

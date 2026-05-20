@@ -17,7 +17,7 @@ public struct IMPSYMainView: View {
                 headerView
                 modelSection
                 parametersSection
-                stateSection
+                activitySection
                 mappingsSection
             }
             .padding(16)
@@ -57,25 +57,53 @@ public struct IMPSYMainView: View {
         }
     }
 
-    private var stateSection: some View {
-        HStack {
-            HStack(spacing: 6) {
-                Circle()
-                    .fill(viewModel.callResponseState == "RESPONSE" ? Color.green : Color.orange)
-                    .frame(width: 10, height: 10)
-                Text(viewModel.callResponseState)
-                    .font(.system(.subheadline, design: .monospaced, weight: .semibold))
+    private var activitySection: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            sectionLabel("Activity")
+            VStack(spacing: 10) {
+                HStack {
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(viewModel.callResponseState == "RESPONSE" ? Color.green : Color.orange)
+                            .frame(width: 10, height: 10)
+                        Text(viewModel.callResponseState)
+                            .font(.system(.subheadline, design: .monospaced, weight: .semibold))
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Capsule().fill(Color.primary.opacity(0.08)))
+
+                    Spacer()
+
+                    Button("Reset LSTM") { viewModel.resetLSTM() }
+                        .buttonStyle(.bordered)
+                        .disabled(!viewModel.modelStatus.isReady)
+                }
+
+                HStack(spacing: 0) {
+                    metric("Events", "\(viewModel.generatedEventCount)")
+                    Divider().frame(height: 30)
+                    metric("Last Δt", String(format: "%.3f s", viewModel.lastEventDt))
+                    Divider().frame(height: 30)
+                    metric("Last MIDI", viewModel.lastEventSummary)
+                }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(Capsule().fill(Color.primary.opacity(0.08)))
-
-            Spacer()
-
-            Button("Reset LSTM") { viewModel.resetLSTM() }
-                .buttonStyle(.bordered)
-                .disabled(!viewModel.modelStatus.isReady)
+            .padding(10)
+            .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.04)))
         }
+    }
+
+    private func metric(_ label: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.system(.callout, design: .monospaced, weight: .medium))
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var mappingsSection: some View {

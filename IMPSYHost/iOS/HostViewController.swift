@@ -41,6 +41,11 @@ final class HostViewController: UIViewController {
             let au = try IMPSYAudioUnit(componentDescription: desc, options: [])
             audioUnit = au
 
+            // A real host (AUM) starts the engine via allocateRenderResources()
+            // when it wires the AU into its audio graph. This test host has no
+            // audio graph, so start the call-and-response loop directly.
+            au.engine.start()
+
             let vc = IMPSYViewController()
             vc.audioUnit = au
             statusLabel.removeFromSuperview()

@@ -23,6 +23,16 @@ struct MIDIEvent {
             body(buf.baseAddress!, byteCount)
         }
     }
+
+    /// Short human-readable description, e.g. "Note 67 ch1" or "CC11=80 ch11".
+    var summary: String {
+        switch statusByte & 0xF0 {
+        case 0x90: return "Note \(data1) ch\(channel)"
+        case 0xB0: return "CC\(data1)=\(data2) ch\(channel)"
+        case 0xE0: return "Bend ch\(channel)"
+        default:   return String(format: "0x%02X ch%d", statusByte, channel)
+        }
+    }
 }
 
 // MARK: - MIDIMapper
