@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- IMPSY AUv3 app icon.
+       Palette — Sanzo Wada, A Dictionary of Colour Combinations:
+       Cossack Green #437742 · Cream Yellow #fdbf68 · Salvia Blue #97acc8 · Sulphur Yellow #f5ecc2
+       The hero wave is the impsy-homepage favicon path, scaled 16x. -->
+  <defs>
+    <linearGradient id="ground" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0"    stop-color="#5c9b58"/>
+      <stop offset="0.55" stop-color="#437742"/>
+      <stop offset="1"    stop-color="#2b5230"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.46" cy="0.40" r="0.62">
+      <stop offset="0"    stop-color="#97acc8" stop-opacity="0.90"/>
+      <stop offset="0.55" stop-color="#97acc8" stop-opacity="0.22"/>
+      <stop offset="1"    stop-color="#97acc8" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="wave" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffd089"/>
+      <stop offset="1" stop-color="#f3ad4f"/>
+    </linearGradient>
+    <filter id="drop" x="-40%" y="-40%" width="180%" height="180%">
+      <feDropShadow dx="0" dy="16" stdDeviation="22" flood-color="#16301b" flood-opacity="0.55"/>
+    </filter>
+    <path id="wpath" d="M160 640 Q288 192 416 640 T672 640 T928 448"/>
+  </defs>
+
+  <!-- ground -->
+  <rect width="1024" height="1024" fill="url(#ground)"/>
+
+  <!-- faint signal staff -->
+  <g stroke="#c3d4e8" stroke-width="3" opacity="0.13">
+    <line x1="0" y1="316" x2="1024" y2="316"/>
+    <line x1="0" y1="450" x2="1024" y2="450"/>
+    <line x1="0" y1="584" x2="1024" y2="584"/>
+    <line x1="0" y1="718" x2="1024" y2="718"/>
+  </g>
+
+  <!-- Salvia-Blue glow behind the wave -->
+  <rect width="1024" height="1024" fill="url(#glow)"/>
+
+  <!-- wave artwork, inset 7% for breathing room -->
+  <g transform="translate(35.84,35.84) scale(0.93)">
+
+    <!-- echo wave: the 'call' -->
+    <g transform="translate(54,82)" opacity="0.9">
+      <use href="#wpath" fill="none" stroke="#f5ecc2" stroke-width="44"
+           stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="160" cy="640" r="26" fill="#f5ecc2"/>
+    </g>
+
+    <!-- hero wave: the 'response' -->
+    <use href="#wpath" fill="none" stroke="url(#wave)" stroke-width="66"
+         stroke-linecap="round" stroke-linejoin="round" filter="url(#drop)"/>
+    <!-- glossy highlight -->
+    <use href="#wpath" fill="none" stroke="#fdf3d2" stroke-width="13"
+         stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/>
+
+    <!-- input origin -->
+    <circle cx="160" cy="640" r="33" fill="#2b5230"/>
+    <circle cx="160" cy="640" r="33" fill="none" stroke="#f5ecc2" stroke-width="11"/>
+
+    <!-- prediction node: where the wave resolves -->
+    <circle cx="928" cy="448" r="84" fill="none" stroke="#97acc8" stroke-width="8"/>
+    <circle cx="928" cy="448" r="58" fill="#f5ecc2"/>
+    <circle cx="928" cy="448" r="34" fill="url(#wave)"/>
+  </g>
+</svg>
