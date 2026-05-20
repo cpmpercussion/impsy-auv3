@@ -73,6 +73,15 @@ public struct IMPSYMainView: View {
                     .padding(.vertical, 6)
                     .background(Capsule().fill(Color.primary.opacity(0.08)))
 
+                    // Flashes once per prediction, like a MIDI interface LED
+                    HStack(spacing: 4) {
+                        PredictionLED(trigger: viewModel.generatedEventCount)
+                        Text("ACT")
+                            .font(.system(.caption2, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.leading, 6)
+
                     Spacer()
 
                     Button("Reset LSTM") { viewModel.resetLSTM() }
@@ -130,6 +139,35 @@ public struct IMPSYMainView: View {
         #else
         Color.white
         #endif
+    }
+}
+
+// MARK: - Prediction Activity LED
+
+/// A small indicator that flashes once each time a prediction is made,
+/// emulating the activity LED on a MIDI interface.
+private struct PredictionLED: View {
+    /// Increments once per prediction; every change triggers one flash.
+    let trigger: Int
+    @State private var lit = false
+
+    var body: some View {
+        Circle()
+            .fill(lit ? Color.green : Color.green.opacity(0.18))
+            .frame(width: 9, height: 9)
+            .overlay(Circle().strokeBorder(Color.green.opacity(0.4), lineWidth: 0.5))
+            .shadow(color: lit ? Color.green : .clear, radius: lit ? 3.5 : 0)
+            .onChange(of: trigger) { _, _ in flash() }
+            .accessibilityHidden(true)
+    }
+
+    private func flash() {
+        // Two transactions: an instant "on", then a quick fade. Doing both in
+        // one synchronous block would net to no change and never render lit.
+        lit = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.04) {
+            withAnimation(.easeOut(duration: 0.2)) { lit = false }
+        }
     }
 }
 
