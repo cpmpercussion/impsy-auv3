@@ -12,10 +12,11 @@ enum ParameterAddress: AUParameterAddress {
 
 // MARK: - Parameter Defaults & Ranges
 
+// Defaults from configs/AiC-charles-u6midipro.toml in the IMPSY repository.
 enum ParameterDefaults {
-    static let threshold: Float  = 2.0
+    static let threshold: Float  = 0.1
     static let sigmaTemp: Float  = 0.01
-    static let piTemp: Float     = 1.5
+    static let piTemp: Float     = 1.0
     static let timescale: Float  = 1.0
 }
 

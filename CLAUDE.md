@@ -121,10 +121,12 @@ The four parameters are also in the `AUParameterTree` (addresses 0–3) for host
 
 | Name | Address | Range | Default |
 |------|---------|-------|---------|
-| Threshold | 0 | 0.1–10.0 s | 2.0 |
+| Threshold | 0 | 0.1–10.0 s | 0.1 |
 | Sigma Temp | 1 | 0.001–2.0 | 0.01 |
-| Pi Temp | 2 | 0.1–5.0 | 1.5 |
+| Pi Temp | 2 | 0.1–5.0 | 1.0 |
 | Timescale | 3 | 0.1–4.0× | 1.0 |
+
+Defaults match `configs/AiC-charles-u6midipro.toml` in the IMPSY repo.
 
 ## MIDI mapping conventions
 
