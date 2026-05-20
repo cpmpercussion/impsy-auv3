@@ -1,5 +1,5 @@
 import XCTest
-@testable import IMPSYExtension_macOS   // or import the module containing MDNSampler
+// Common sources are compiled directly into this test target (see project.yml)
 
 final class MDNSamplerTests: XCTestCase {
 
@@ -17,8 +17,9 @@ final class MDNSamplerTests: XCTestCase {
         let diffuse = MDNSampler.softmaxWithTemperature(logits, temperature: 10.0)
         // Sharp distribution: first component should dominate
         XCTAssertGreaterThan(sharp[0], 0.99)
-        // Diffuse: closer to uniform
-        XCTAssertLessThan(diffuse[0], 0.5)
+        // Diffuse: higher temperature flattens the distribution toward uniform
+        XCTAssertLessThan(diffuse[0], sharp[0])
+        XCTAssertGreaterThan(diffuse[1], sharp[1])
     }
 
     func testSoftmaxNumericalStability() {
@@ -95,12 +96,13 @@ final class MDNSamplerTests: XCTestCase {
     }
 
     func testPostProcessScaling() {
-        // Unscaled raw values: time=0.05*10=0.5 (scaled), values=0.5*10=5.0
+        // postProcess divides every value by SCALE_FACTOR (10) then clamps dims 1…N to [0,1].
         let raw: [Float] = [0.5, 5.0, 3.0, 8.0]
         let processed = MDNSampler.postProcess(raw)
-        XCTAssertEqual(processed[0], 0.5 / 10.0, accuracy: 1e-6)
-        XCTAssertEqual(processed[1], 0.5, accuracy: 1e-6)   // clamped to [0,1]
-        XCTAssertEqual(processed[3], 1.0, accuracy: 1e-6)   // 8/10=0.8 → ok... wait no 8/10=0.8 not 1.0
+        XCTAssertEqual(processed[0], 0.5 / 10.0, accuracy: 1e-6)   // time delta: 0.05
+        XCTAssertEqual(processed[1], 0.5, accuracy: 1e-6)          // 5/10 = 0.5
+        XCTAssertEqual(processed[2], 0.3, accuracy: 1e-6)          // 3/10 = 0.3
+        XCTAssertEqual(processed[3], 0.8, accuracy: 1e-6)          // 8/10 = 0.8
     }
 
     func testMinimumDeltaTime() {

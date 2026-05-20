@@ -1,5 +1,5 @@
 import XCTest
-@testable import IMPSYExtension_macOS
+// Common sources are compiled directly into this test target (see project.yml)
 
 final class MIDIMappingTests: XCTestCase {
 

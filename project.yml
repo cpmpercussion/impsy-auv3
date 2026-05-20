@@ -9,6 +9,10 @@ options:
   generateEmptyDirectories: true
   postGenCommand: echo "Project generated. See README.md to add TFLite dependency."
 
+settings:
+  base:
+    DEVELOPMENT_TEAM: EDH387FRHA
+
 # NOTE: After generating, add TFLite via File → Add Package Dependencies in Xcode.
 # Recommended: https://github.com/google-ai-edge/LiteRT  product: LiteRT
 # Then change `import TensorFlowLite` to `import LiteRT` in TFLiteRNN.swift
@@ -158,3 +162,4 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: au.com.charlesmartin.impsy.tests
         SWIFT_VERSION: "5.9"
+        GENERATE_INFOPLIST_FILE: "YES"
