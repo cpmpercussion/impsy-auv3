@@ -18,9 +18,15 @@
 	<string>1.0</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.music</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>$(MACOSX_DEPLOYMENT_TARGET)</string>
 	<key>NSDocumentsFolderUsageDescription</key>
 	<string>IMPSY loads TFLite model files from your Files app.</string>
+	<key>NSHumanReadableCopyright</key>
+	<string>Copyright © 2026 Charles Martin. All rights reserved.</string>
 </dict>
 </plist>
