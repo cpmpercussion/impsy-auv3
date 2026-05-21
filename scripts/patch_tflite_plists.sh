@@ -1,15 +1,17 @@
 #!/bin/zsh
 # Patches missing CFBundleShortVersionString and MinimumOSVersion in the
-# TFLite frameworks embedded in the app. App Store Connect rejects builds
-# without these keys (errors 90057 and 90360/90530). The kewlbear/TFLiteC
-# binaries wrap Google's official TFLite without the required metadata.
+# TFLite frameworks embedded in the app, and generates dSYMs for them so
+# Xcode Cloud's upload-prep step doesn't choke. App Store Connect rejects
+# builds without those plist keys (errors 90057, 90360, 90530), and
+# kewlbear/TFLiteC's prebuilt binaries ship without dSYMs — locally
+# Validate calls that a warning, but Xcode Cloud fails the upload step.
 #
-# Runs as a post-build script on IMPSYHost-iOS so it can edit the already-
-# embedded frameworks. After editing the Info.plist we must re-sign each
-# framework — the framework's existing signature was computed over the
-# pre-patch plist. Xcode's final app code-sign (which happens after all
-# build phases) then rebuilds the app's _CodeSignature against the new
-# framework signatures. Idempotent.
+# Runs as a post-build script on both IMPSYHost-iOS and IMPSYExtension-iOS
+# so each bundle's embedded copy is patched. After editing the Info.plist
+# we must re-sign each framework — the existing signature was computed
+# over the pre-patch plist. Xcode's final app code-sign (which happens
+# after all build phases) then rebuilds the app's _CodeSignature against
+# the new framework signatures. Idempotent.
 
 set -euo pipefail
 
@@ -32,6 +34,17 @@ for fw_name in TensorFlowLiteC TensorFlowLiteCCoreML TensorFlowLiteCMetal; do
     /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $TFLITE_VERSION" "$plist"
     /usr/libexec/PlistBuddy -c "Add :MinimumOSVersion string $MIN_OS" "$plist" 2>/dev/null || true
     /usr/libexec/PlistBuddy -c "Set :MinimumOSVersion $MIN_OS" "$plist"
+
+    # Generate a dSYM next to the framework binary so the archive's dSYMs
+    # folder ends up with one matching the binary's LC_UUID. Prebuilt
+    # binaries usually have no DWARF, but dsymutil still emits a stub
+    # bundle with the correct UUID — enough for App Store upload.
+    binary="$fw_dir/$fw_name"
+    if [[ -f "$binary" && -n "${DWARF_DSYM_FOLDER_PATH:-}" ]]; then
+        dsym_path="$DWARF_DSYM_FOLDER_PATH/${fw_name}.framework.dSYM"
+        echo "patch_tflite_plists: generating dSYM at $dsym_path"
+        dsymutil "$binary" -o "$dsym_path" || true
+    fi
 
     if [[ -n "${EXPANDED_CODE_SIGN_IDENTITY:-}" ]]; then
         echo "patch_tflite_plists: re-signing $fw_dir"
