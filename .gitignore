@@ -27,8 +27,11 @@ Package.resolved
 Pods/
 *.xcworkspace
 
-# Generated project
-*.xcodeproj/
+# Generated project — keep shared schemes so Xcode Cloud workflow editor can list them
+*.xcodeproj/*
+!*.xcodeproj/xcshareddata
+*.xcodeproj/xcshareddata/*
+!*.xcodeproj/xcshareddata/xcschemes
 
 # OS
 .DS_Store

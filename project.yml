@@ -28,6 +28,7 @@ targets:
   IMPSYHost-iOS:
     type: application
     platform: iOS
+    scheme: {}
     postBuildScripts:
       - script: |
           "$SRCROOT/scripts/patch_tflite_plists.sh"
@@ -89,6 +90,9 @@ targets:
   IMPSYHost-macOS:
     type: application
     platform: macOS
+    scheme:
+      testTargets:
+        - IMPSYTests
     sources:
       - path: IMPSYHost/macOS
         excludes: ["Info.plist"]
