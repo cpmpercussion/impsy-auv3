@@ -110,8 +110,12 @@ final class InteractionEngine: @unchecked Sendable {
             do {
                 let newRNN = try TFLiteRNN(modelURL: url, config: config)
                 self.rnn = newRNN
-                self.inputVector = [Float](repeating: 0, count: config.dimension - 1)
-                self.lastUserInteraction = [Float](repeating: 0, count: config.dimension)
+                // Match the IMPSY Python reference (impsy/interaction.py): seed the
+                // first interaction with a random sample so response mode primes from
+                // plausible musical state when it triggers before any user input.
+                let initial = Self.randomInitialSample(dimension: config.dimension)
+                self.inputVector = Array(initial.dropFirst())
+                self.lastUserInteraction = initial
                 // Cancel any response chain running against the previous model
                 // and start fresh in call mode.
                 self.responseGeneration &+= 1
@@ -139,6 +143,17 @@ final class InteractionEngine: @unchecked Sendable {
         inferenceQueue.async { [weak self] in
             self?.rnn?.resetStates()
         }
+    }
+
+    // MARK: - Initial Sample
+    //
+    // Mirrors `random_sample` in ../impsy/impsy/mdrnn.py: dimension 0 is a small
+    // dt (≈ 0.0075–0.0125 s) and the remaining dimensions are random in [0,1).
+    static func randomInitialSample(dimension: Int) -> [Float] {
+        guard dimension > 0 else { return [] }
+        var sample = (0..<dimension).map { _ in Float.random(in: 0..<1) }
+        sample[0] = 0.01 + (Float.random(in: 0..<1) - 0.5) * 0.005
+        return sample
     }
 
     // MARK: - Mapping Updates (call from main/UI thread)

@@ -92,6 +92,12 @@ TFLite models from `../impsy/models/` follow this tensor convention:
 - **Dimension 0**: always time delta (seconds). Dimensions 1…N: normalised values in `[0,1]`
 - **MDN output layout**: `[mus: M×D | sigmas: M×D | piLogits: M]`
 
+### Initialisation parity with IMPSY Python
+
+The engine initialises to match `../impsy/impsy/mdrnn.py` and `interaction.py`:
+- **LSTM h/c states**: zero-initialised (`lstm_blank_states` in Python, `TFLiteRNN.lstmStates` in Swift).
+- **First interaction vector**: a *random sample* — `dt ≈ 0.01 s` plus random `[0,1)` values — produced by `InteractionEngine.randomInitialSample(dimension:)`, mirroring `random_sample()` in Python. This only matters when response mode triggers before any user input; once the user plays, the vector is overwritten with real MIDI.
+
 The reference Python implementation is in `../impsy/impsy/mdrnn.py` (class `TfliteMDRNN`).
 
 ## AU registration
