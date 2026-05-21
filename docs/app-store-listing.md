@@ -15,8 +15,9 @@ The iOS and macOS app records share this text.
 | Copyright | `© 2026 Charles Patrick Martin` |
 | Bundle ID (host) | `au.charlesmartin.impsy` |
 | Bundle ID (extension) | `au.charlesmartin.impsy.IMPSYExtension` |
-| SKU iOS | `impsy-ios` |
-| SKU macOS | `impsy-macos` |
+| SKU | `impsy` |
+
+One App Store Connect app record, both platforms (iOS + macOS) selected in the New App dialog. Each platform gets its own version, screenshots, and per-platform fields, but they share the name, bundle ID, and SKU.
 
 ## URLs
 
@@ -99,8 +100,8 @@ App icon 1024×1024 already lives in `Resources/AppIcon/`.
 
 - [ ] Privacy Policy URL — host on charlesmartin.au or repo Pages
 - [ ] Support URL — host on charlesmartin.au or link to repo issues
-- [ ] Register App IDs at developer.apple.com (unified, both bundle IDs)
-- [ ] Create the two App records at appstoreconnect.apple.com
+- [x] Register App IDs at developer.apple.com (unified, both bundle IDs)
+- [ ] Create the App record at appstoreconnect.apple.com (one record, both platforms)
 - [ ] Capture screenshots at each required size
 - [ ] Upload archives via Xcode Organizer
 - [ ] Justify the temporary-exception entitlement on macOS submission (text above)
