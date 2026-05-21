@@ -132,6 +132,11 @@ targets:
   IMPSYExtension-iOS:
     type: app-extension
     platform: iOS
+    postBuildScripts:
+      - script: |
+          "$SRCROOT/scripts/patch_tflite_plists.sh"
+        name: "Patch TFLite framework Info.plists"
+        basedOnDependencyAnalysis: false
     sources:
       - path: IMPSYExtension/Common
       - path: IMPSYExtension/iOS
