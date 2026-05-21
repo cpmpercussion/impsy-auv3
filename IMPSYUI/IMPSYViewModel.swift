@@ -45,6 +45,7 @@ final class IMPSYViewModel: ObservableObject {
 
     // Live activity feedback from the call-and-response loop
     @Published var generatedEventCount: Int = 0
+    @Published var inputEventCount: Int = 0
     @Published var lastEventSummary: String = "—"
     @Published var lastEventDt: Double = 0
 
@@ -142,7 +143,16 @@ final class IMPSYViewModel: ObservableObject {
             self.lastEventDt = (note.userInfo?["dt"] as? Double) ?? 0
         }
 
-        notificationTokens = [modelToken, stateToken, eventToken]
+        // Listen for inbound user MIDI events (red ACT LED)
+        let inputToken = NotificationCenter.default.addObserver(
+            forName: .IMPSYUserInputReceived,
+            object: au,
+            queue: .main
+        ) { [weak self] _ in
+            self?.inputEventCount += 1
+        }
+
+        notificationTokens = [modelToken, stateToken, eventToken, inputToken]
     }
 
     private func handleModelStatusNotification(_ note: Notification) {

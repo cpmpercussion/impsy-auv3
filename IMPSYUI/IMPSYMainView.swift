@@ -73,14 +73,18 @@ public struct IMPSYMainView: View {
                     .padding(.vertical, 6)
                     .background(Capsule().fill(Color.primary.opacity(0.08)))
 
-                    // Flashes once per prediction, like a MIDI interface LED
+                    // Activity LEDs: red flashes on inbound user MIDI,
+                    // green flashes on each RNN-generated event.
                     HStack(spacing: 4) {
-                        PredictionLED(trigger: viewModel.generatedEventCount)
+                        ActivityLED(trigger: viewModel.inputEventCount, color: .red)
+                        ActivityLED(trigger: viewModel.generatedEventCount, color: .green)
                         Text("ACT")
                             .font(.system(.caption2, design: .monospaced))
                             .foregroundStyle(.secondary)
                     }
                     .padding(.leading, 6)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("MIDI activity")
 
                     Spacer()
 
@@ -142,21 +146,22 @@ public struct IMPSYMainView: View {
     }
 }
 
-// MARK: - Prediction Activity LED
+// MARK: - Activity LED
 
-/// A small indicator that flashes once each time a prediction is made,
-/// emulating the activity LED on a MIDI interface.
-private struct PredictionLED: View {
-    /// Increments once per prediction; every change triggers one flash.
+/// A small indicator that flashes once each time `trigger` changes,
+/// emulating the IN/OUT activity LEDs on a MIDI interface.
+private struct ActivityLED: View {
+    /// Increments once per event; every change triggers one flash.
     let trigger: Int
+    let color: Color
     @State private var lit = false
 
     var body: some View {
         Circle()
-            .fill(lit ? Color.green : Color.green.opacity(0.18))
+            .fill(lit ? color : color.opacity(0.18))
             .frame(width: 9, height: 9)
-            .overlay(Circle().strokeBorder(Color.green.opacity(0.4), lineWidth: 0.5))
-            .shadow(color: lit ? Color.green : .clear, radius: lit ? 3.5 : 0)
+            .overlay(Circle().strokeBorder(color.opacity(0.4), lineWidth: 0.5))
+            .shadow(color: lit ? color : .clear, radius: lit ? 3.5 : 0)
             .onChange(of: trigger) { _, _ in flash() }
             .accessibilityHidden(true)
     }

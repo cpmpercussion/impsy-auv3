@@ -149,6 +149,12 @@ public final class IMPSYAudioUnit: AUAudioUnit {
                 userInfo: ["dt": dt, "summary": summary]
             )
         }
+        engine.onUserInputReceived = { [weak self] in
+            NotificationCenter.default.post(
+                name: .IMPSYUserInputReceived,
+                object: self
+            )
+        }
     }
 }
 
@@ -158,4 +164,5 @@ extension Notification.Name {
     static let IMPSYCallResponseStateChanged = Notification.Name("IMPSYCallResponseStateChanged")
     static let IMPSYModelStatusChanged       = Notification.Name("IMPSYModelStatusChanged")
     static let IMPSYEventGenerated           = Notification.Name("IMPSYEventGenerated")
+    static let IMPSYUserInputReceived        = Notification.Name("IMPSYUserInputReceived")
 }

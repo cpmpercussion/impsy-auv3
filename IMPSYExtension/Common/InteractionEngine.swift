@@ -66,6 +66,11 @@ final class InteractionEngine: @unchecked Sendable {
     /// for UI activity feedback.
     var onEventGenerated: ((Double, [MIDIEvent]) -> Void)?
 
+    /// Called on the inference queue each tick that drained at least one
+    /// mapped user MIDI event from the input buffer. Used purely for UI
+    /// activity feedback (the red ACT LED).
+    var onUserInputReceived: (() -> Void)?
+
     // MARK: - Init
 
     init(mappings: MIDIMappingSet) {
@@ -186,6 +191,7 @@ final class InteractionEngine: @unchecked Sendable {
 
         // ── User input: record it and let the RNN listen ─────────────────────
         if gotUserInput {
+            onUserInputReceived?()
             let dt = max(now - lastUserInputTime, IMPSYConstants.minimumDeltaTime)
             lastUserInputTime = now
             // Full interaction vector consumed by the RNN: [dt, v_1 … v_N].
