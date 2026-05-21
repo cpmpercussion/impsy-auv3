@@ -16,7 +16,10 @@
 set -euo pipefail
 
 TFLITE_VERSION="2.14.0"
-MIN_OS="12.0"
+# Match the embedding app's iOS deployment target. App Store Connect rejects
+# (ITMS-90208) when a framework's MinimumOSVersion is lower than the app's,
+# even though the prebuilt TFLite binaries actually support iOS 12+.
+MIN_OS="${IPHONEOS_DEPLOYMENT_TARGET:-17.0}"
 
 FRAMEWORKS_DIR="$TARGET_BUILD_DIR/$WRAPPER_NAME/Frameworks"
 if [[ ! -d "$FRAMEWORKS_DIR" ]]; then
