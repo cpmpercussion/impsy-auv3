@@ -12,4 +12,11 @@ echo "ci_post_clone: generating Xcode project"
 cd "$CI_PRIMARY_REPOSITORY_PATH"
 xcodegen generate
 
+# Xcode Cloud disables automatic SPM resolution, so it requires Package.resolved
+# to be present in the generated .xcodeproj before the build step runs.
+echo "ci_post_clone: installing Package.resolved into generated project"
+SPM_DIR="IMPSY-AUv3.xcodeproj/project.xcworkspace/xcshareddata/swiftpm"
+mkdir -p "$SPM_DIR"
+cp ci_scripts/Package.resolved "$SPM_DIR/Package.resolved"
+
 echo "ci_post_clone: done"
