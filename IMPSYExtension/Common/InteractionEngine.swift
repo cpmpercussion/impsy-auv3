@@ -141,7 +141,22 @@ final class InteractionEngine: @unchecked Sendable {
 
     func resetLSTMStates() {
         inferenceQueue.async { [weak self] in
-            self?.rnn?.resetStates()
+            guard let self else { return }
+            self.rnn?.resetStates()
+            // After zeroing the LSTM, drive one random sample through the RNN so
+            // it leaves blank state before any response generation. Same seed shape
+            // as IMPSY's random_sample(): dt ≈ 0.01 s jittered, values in [0,1).
+            if let rnn = self.rnn, !self.lastUserInteraction.isEmpty {
+                let initial = Self.randomInitialSample(dimension: self.lastUserInteraction.count)
+                _ = try? rnn.generate(input: initial,
+                                      piTemp: self.piTemp,
+                                      sigmaTemp: self.sigmaTemp)
+                self.inputVector = Array(initial.dropFirst())
+                self.lastUserInteraction = initial
+            }
+            // Cancel any in-flight response chain so it doesn't keep generating
+            // from the pre-reset seed.
+            self.responseGeneration &+= 1
         }
     }
 
