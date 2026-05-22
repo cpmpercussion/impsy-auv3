@@ -119,9 +119,9 @@ Non-automatable state lives in `fullState` (serialized by the host on session sa
 | `impsy.modelBookmark` | `Data` | Security-scoped URL bookmark |
 | `impsy.inputMappings` | `Data` | JSON `[DimensionMapping]` |
 | `impsy.outputMappings` | `Data` | JSON `[DimensionMapping]` |
-| `impsy.threshold/sigmaTemp/piTemp/timescale` | `Float` | Parameter values |
+| `impsy.threshold/sigmaTemp/piTemp/timescale/inputThru` | `Float` | Parameter values |
 
-The four parameters are also in the `AUParameterTree` (addresses 0–3) for host automation.
+The five parameters are also in the `AUParameterTree` (addresses 0–4) for host automation.
 
 ## AU Parameters
 
@@ -131,6 +131,9 @@ The four parameters are also in the `AUParameterTree` (addresses 0–3) for host
 | Sigma Temp | 1 | 0.001–2.0 | 0.01 |
 | Pi Temp | 2 | 0.1–5.0 | 1.0 |
 | Timescale | 3 | 0.1–4.0× | 1.0 |
+| MIDI Thru | 4 | 0 / 1 (boolean) | 1 (on) |
+
+**MIDI Thru** mirrors `input_thru` in IMPSY Python (`../impsy/impsy/interaction.py:415`): when on, every mapped user MIDI input re-encodes the current input vector through the output mappings and emits MIDI immediately, in addition to feeding the RNN. Turn off when the user's controller already drives the synth directly.
 
 Defaults match `configs/AiC-charles-u6midipro.toml` in the IMPSY repo.
 

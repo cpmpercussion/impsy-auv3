@@ -61,8 +61,23 @@ extension IMPSYAudioUnit {
         )
         timescale.value = ParameterDefaults.timescale
 
+        // Boolean-ish stepped parameter for MIDI thru (off / on).
+        let inputThru = AUParameterTree.createParameter(
+            withIdentifier:  "inputThru",
+            name:            "MIDI Thru",
+            address:         ParameterAddress.inputThru.rawValue,
+            min:             0,
+            max:             1,
+            unit:            .boolean,
+            unitName:        nil,
+            flags:           [.flag_IsReadable, .flag_IsWritable, .flag_ValuesHaveStrings],
+            valueStrings:    ["Off", "On"],
+            dependentParameters: nil
+        )
+        inputThru.value = ParameterDefaults.inputThru
+
         parameterTree_ = AUParameterTree.createTree(withChildren: [
-            threshold, sigmaTemp, piTemp, timescale
+            threshold, sigmaTemp, piTemp, timescale, inputThru
         ])
 
         // Propagate changes to the engine
@@ -73,6 +88,7 @@ extension IMPSYAudioUnit {
             case .sigmaTemp:  self.engine.sigmaTemp = value
             case .piTemp:     self.engine.piTemp    = value
             case .timescale:  self.engine.timescale = value
+            case .inputThru:  self.engine.inputThru = value > 0.5
             }
         }
 
@@ -83,6 +99,7 @@ extension IMPSYAudioUnit {
             case .sigmaTemp:  return self.engine.sigmaTemp
             case .piTemp:     return self.engine.piTemp
             case .timescale:  return self.engine.timescale
+            case .inputThru:  return self.engine.inputThru ? 1 : 0
             }
         }
     }

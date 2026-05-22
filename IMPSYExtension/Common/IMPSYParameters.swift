@@ -8,6 +8,7 @@ enum ParameterAddress: AUParameterAddress {
     case sigmaTemp  = 1
     case piTemp     = 2
     case timescale  = 3
+    case inputThru  = 4
 }
 
 // MARK: - Parameter Defaults & Ranges
@@ -18,6 +19,7 @@ enum ParameterDefaults {
     static let sigmaTemp: Float  = 0.01
     static let piTemp: Float     = 1.0
     static let timescale: Float  = 1.0
+    static let inputThru: Float  = 1.0   // on by default
 }
 
 enum ParameterRanges {
@@ -38,6 +40,7 @@ enum StateKey {
     static let sigmaTemp        = "impsy.sigmaTemp"
     static let piTemp           = "impsy.piTemp"
     static let timescale        = "impsy.timescale"
+    static let inputThru        = "impsy.inputThru"
 }
 
 // MARK: - IMPSY Model Constants

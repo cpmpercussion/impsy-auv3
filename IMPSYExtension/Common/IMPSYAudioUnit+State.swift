@@ -162,6 +162,7 @@ extension IMPSYAudioUnit {
         state[StateKey.sigmaTemp] = engine.sigmaTemp
         state[StateKey.piTemp]    = engine.piTemp
         state[StateKey.timescale] = engine.timescale
+        state[StateKey.inputThru] = engine.inputThru ? Float(1) : Float(0)
 
         return state
     }
@@ -185,6 +186,10 @@ extension IMPSYAudioUnit {
         if let v = state[StateKey.timescale] as? Float {
             engine.timescale = v
             parameterTree_?[ParameterAddress.timescale.rawValue]?.value = v
+        }
+        if let v = state[StateKey.inputThru] as? Float {
+            engine.inputThru = v > 0.5
+            parameterTree_?[ParameterAddress.inputThru.rawValue]?.value = v
         }
 
         // Restore MIDI mappings

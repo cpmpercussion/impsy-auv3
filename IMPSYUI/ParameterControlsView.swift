@@ -21,6 +21,14 @@ struct ParameterControlsView: View {
                          value: $viewModel.timescale,
                          range: ParameterRanges.timescaleMin...ParameterRanges.timescaleMax,
                          format: "%.2f ×")
+            HStack(spacing: 8) {
+                Text("MIDI Thru")
+                    .frame(width: 80, alignment: .leading)
+                    .font(.system(.caption, design: .rounded))
+                Toggle("", isOn: $viewModel.inputThru)
+                    .labelsHidden()
+                Spacer()
+            }
         }
         .padding(10)
         .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.04)))

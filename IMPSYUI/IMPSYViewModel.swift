@@ -54,6 +54,7 @@ final class IMPSYViewModel: ObservableObject {
     @Published var sigmaTemp: Float = ParameterDefaults.sigmaTemp
     @Published var piTemp:    Float = ParameterDefaults.piTemp
     @Published var timescale: Float = ParameterDefaults.timescale
+    @Published var inputThru: Bool  = ParameterDefaults.inputThru > 0.5
 
     // MARK: - Audio Unit reference
 
@@ -88,6 +89,7 @@ final class IMPSYViewModel: ObservableObject {
             sigmaTemp = tree.parameter(withAddress: ParameterAddress.sigmaTemp.rawValue)?.value ?? ParameterDefaults.sigmaTemp
             piTemp    = tree.parameter(withAddress: ParameterAddress.piTemp.rawValue)?.value    ?? ParameterDefaults.piTemp
             timescale = tree.parameter(withAddress: ParameterAddress.timescale.rawValue)?.value ?? ParameterDefaults.timescale
+            inputThru = (tree.parameter(withAddress: ParameterAddress.inputThru.rawValue)?.value ?? ParameterDefaults.inputThru) > 0.5
 
             // Observe parameter changes from host automation
             paramObserverToken = tree.token(byAddingParameterObserver: { [weak self] address, value in
@@ -98,6 +100,7 @@ final class IMPSYViewModel: ObservableObject {
                     case .sigmaTemp: self.sigmaTemp = value
                     case .piTemp:    self.piTemp    = value
                     case .timescale: self.timescale = value
+                    case .inputThru: self.inputThru = value > 0.5
                     }
                 }
             })
@@ -183,6 +186,7 @@ final class IMPSYViewModel: ObservableObject {
         $sigmaTemp.dropFirst().sink { [weak self] val in self?.setParameter(.sigmaTemp, value: val) }.store(in: &cancellables)
         $piTemp.dropFirst().sink    { [weak self] val in self?.setParameter(.piTemp,    value: val) }.store(in: &cancellables)
         $timescale.dropFirst().sink { [weak self] val in self?.setParameter(.timescale, value: val) }.store(in: &cancellables)
+        $inputThru.dropFirst().sink { [weak self] on  in self?.setParameter(.inputThru, value: on ? 1 : 0) }.store(in: &cancellables)
     }
 
     private func setParameter(_ address: ParameterAddress, value: Float) {

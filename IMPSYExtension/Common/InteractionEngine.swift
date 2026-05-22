@@ -51,6 +51,7 @@ final class InteractionEngine: @unchecked Sendable {
     var sigmaTemp: Float  = ParameterDefaults.sigmaTemp
     var piTemp: Float     = ParameterDefaults.piTemp
     var timescale: Float  = ParameterDefaults.timescale
+    var inputThru: Bool   = ParameterDefaults.inputThru > 0.5
 
     // MARK: - Ring buffers
 
@@ -233,6 +234,20 @@ final class InteractionEngine: @unchecked Sendable {
             if callResponseState == .call, let rnn {
                 _ = try? rnn.generate(input: lastUserInteraction,
                                       piTemp: piTemp, sigmaTemp: sigmaTemp)
+            }
+
+            // MIDI thru: re-encode the current input vector through the
+            // output mappings (mirrors `send_back_values` in
+            // ../impsy/impsy/interaction.py). One emission per tick — the
+            // vector already reflects the latest value per dimension.
+            if inputThru {
+                let events = mapper.encodeOutput(values: inputVector)
+                for event in events {
+                    outputBuffer.enqueue(
+                        RawMIDIPacket(event.statusByte, event.data1, event.data2,
+                                      length: event.byteCount)
+                    )
+                }
             }
         }
 
