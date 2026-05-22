@@ -96,10 +96,18 @@ targets:
     sources:
       - path: IMPSYHost/macOS
         excludes: ["Info.plist"]
+      # Compile AU logic directly into the host so it can be instantiated
+      # in-process — matches the iOS host, and avoids depending on
+      # audiocomponentd having registered the extension (which is unreliable
+      # for development builds).
+      - path: IMPSYExtension/Common
+      - path: IMPSYUI
+      # Bundled default model (and any other resources)
+      - path: Resources
+        buildPhase: resources
+        excludes: ["AppIcon"]
       # App icon asset catalog (universal — iOS + macOS idioms)
       - IMPSYHost/Assets.xcassets
-      - path: Resources/PrivacyInfo.xcprivacy
-        buildPhase: resources
     dependencies:
       - target: IMPSYExtension-macOS
         embed: true

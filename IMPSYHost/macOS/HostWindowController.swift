@@ -2,9 +2,16 @@ import AppKit
 import AudioToolbox
 import CoreAudioKit
 
+// MARK: - HostWindowController
+//
+// Container app for development on macOS. Instantiates IMPSYAudioUnit
+// in-process (the AU sources are compiled into the host) and hosts its
+// view controller in the main window. This sidesteps audiocomponentd
+// registration, which is unreliable for development-installed builds.
+
 final class HostWindowController: NSWindowController {
 
-    private var audioUnit: AUAudioUnit?
+    private var audioUnit: IMPSYAudioUnit?
 
     convenience init() {
         let window = NSWindow(
@@ -28,20 +35,25 @@ final class HostWindowController: NSWindowController {
             componentFlagsMask:    0
         )
 
-        AUAudioUnit.instantiate(with: desc, options: .loadOutOfProcess) { [weak self] auAudioUnit, error in
-            DispatchQueue.main.async {
-                guard let self else { return }
-                if let error {
-                    self.window?.title = "IMPSY — Load error: \(error.localizedDescription)"
-                    return
-                }
-                guard let au = auAudioUnit else { return }
-                self.audioUnit = au
-                au.requestViewController { [weak self] viewController in
-                    guard let self, let vc = viewController else { return }
-                    self.window?.contentViewController = vc
-                }
+        do {
+            let au = try IMPSYAudioUnit(componentDescription: desc, options: [])
+            audioUnit = au
+
+            // Exercise the real host lifecycle in-process (also starts the engine).
+            do {
+                try au.allocateRenderResources()
+                NSLog("[IMPSY] host: in-process allocateRenderResources OK")
+            } catch {
+                NSLog("[IMPSY] host: in-process allocateRenderResources FAILED: %@",
+                      String(describing: error))
             }
+
+            let vc = IMPSYViewController()
+            vc.audioUnit = au
+            window?.contentViewController = vc
+        } catch {
+            window?.title = "IMPSY — Init error: \(error.localizedDescription)"
+            NSLog("[IMPSY] AU init failed: %@", String(describing: error))
         }
     }
 }
