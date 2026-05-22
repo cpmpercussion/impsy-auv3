@@ -154,7 +154,7 @@ public final class IMPSYAudioUnit: AUAudioUnit {
                 userInfo: ["state": state.rawValue]
             )
         }
-        engine.onEventGenerated = { [weak self] dt, events, dims in
+        engine.onEventGenerated = { [weak self] dt, events, values in
             let summary: String
             if let first = events.first {
                 summary = events.count > 1 ? "\(first.summary) +\(events.count - 1)"
@@ -162,10 +162,19 @@ public final class IMPSYAudioUnit: AUAudioUnit {
             } else {
                 summary = "—"
             }
+            // Dimension indices (still passed for the per-dim LEDs) are just
+            // 0..<events.count; values are the actual per-dim normalised
+            // outputs from the RNN, used by the dashboard faders.
+            let dims = Array(0..<events.count)
             NotificationCenter.default.post(
                 name: .IMPSYEventGenerated,
                 object: self,
-                userInfo: ["dt": dt, "summary": summary, "dimensions": dims]
+                userInfo: [
+                    "dt": dt,
+                    "summary": summary,
+                    "dimensions": dims,
+                    "values": values,
+                ]
             )
         }
         engine.onUserInputReceived = { [weak self] dim in

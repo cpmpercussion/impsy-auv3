@@ -63,10 +63,11 @@ final class InteractionEngine: @unchecked Sendable {
     var onStateChanged: ((CallResponseState) -> Void)?
 
     /// Called on the inference queue each time a response event is emitted,
-    /// with the event's `dt` (seconds), the MIDI it produced, and the 0-based
-    /// dimension indices the events correspond to (one entry per event, in the
-    /// same order). Used purely for UI activity feedback.
-    var onEventGenerated: ((Double, [MIDIEvent], [Int]) -> Void)?
+    /// with the event's `dt` (seconds), the MIDI it produced, and the
+    /// per-output-dimension normalised values that produced those events
+    /// (`values[i]` corresponds to dimension `i+1`). Used purely for UI
+    /// activity feedback and the dashboard faders.
+    var onEventGenerated: ((Double, [MIDIEvent], [Float]) -> Void)?
 
     /// Called on the inference queue for each mapped user MIDI event drained
     /// from the input buffer, with its 0-based dimension index. Used purely for
@@ -323,10 +324,10 @@ final class InteractionEngine: @unchecked Sendable {
                                   length: event.byteCount)
                 )
             }
-            // …notify the UI (each event maps to the same-indexed output
-            // mapping, so dimensions count up from 0)…
-            let dims = Array(0..<events.count)
-            self.onEventGenerated?(dt, events, dims)
+            // …notify the UI. `values` is one entry per output dimension
+            // (index 0 = dim 1) in the same order as `events`, so the UI can
+            // both flash per-dim LEDs and update fader positions.
+            self.onEventGenerated?(dt, events, values)
             // …then generate the event that follows it.
             self.generateAndScheduleResponse(seed: nextSeed, generation: generation)
         }

@@ -56,6 +56,12 @@ final class IMPSYViewModel: ObservableObject {
     @Published var inputDimensionCounts: [Int] = []
     @Published var outputDimensionCounts: [Int] = []
 
+    // Last normalised value the RNN produced for each output dimension. Drives
+    // the dashboard's bidirectional faders: idle, the fader follows the model;
+    // when dragged, it sets these and injects MIDI as if the configured input
+    // message had arrived.
+    @Published var outputValues: [Float] = []
+
     // Parameter values (two-way bound to AUParameterTree)
     @Published var threshold: Float = ParameterDefaults.threshold
     @Published var sigmaTemp: Float = ParameterDefaults.sigmaTemp
@@ -157,6 +163,12 @@ final class IMPSYViewModel: ObservableObject {
                     self.outputDimensionCounts[dim] += 1
                 }
             }
+            if let values = note.userInfo?["values"] as? [Float] {
+                for (i, v) in values.enumerated()
+                    where self.outputValues.indices.contains(i) {
+                    self.outputValues[i] = v
+                }
+            }
         }
 
         // Listen for inbound user MIDI events (red ACT LED + per-dim flash)
@@ -199,8 +211,9 @@ final class IMPSYViewModel: ObservableObject {
 
     // MARK: - Per-dimension activity sizing
 
-    /// Resize input/output activity counters to match the model's user
-    /// dimensions (dim 0 is dt and is not user-mapped, so we use dimension - 1).
+    /// Resize input/output activity counters and the fader value array to
+    /// match the model's user dimensions (dim 0 is dt and is not user-mapped,
+    /// so we use dimension - 1).
     private func resizeDimensionCounts(toModelDimension dimension: Int) {
         let userDims = max(0, dimension - 1)
         if inputDimensionCounts.count != userDims {
@@ -208,6 +221,9 @@ final class IMPSYViewModel: ObservableObject {
         }
         if outputDimensionCounts.count != userDims {
             outputDimensionCounts = Array(repeating: 0, count: userDims)
+        }
+        if outputValues.count != userDims {
+            outputValues = Array(repeating: 0, count: userDims)
         }
     }
 
@@ -240,5 +256,17 @@ final class IMPSYViewModel: ObservableObject {
 
     func resetLSTM() {
         audioUnit?.engine.resetLSTMStates()
+    }
+
+    /// Inject a normalised value (0…1) for a user input dimension as if the
+    /// configured MIDI message had just arrived for it. Used by the dashboard
+    /// faders so dragging drives the same input pipeline as real MIDI in.
+    func injectInput(dimensionIndex: Int, value: Float) {
+        guard mappings.inputMappings.indices.contains(dimensionIndex),
+              let buffer = audioUnit?.engine.inputBuffer else { return }
+        let mapping = mappings.inputMappings[dimensionIndex]
+        let event = MIDIMapper.encode(value: value, using: mapping)
+        buffer.enqueue(RawMIDIPacket(event.statusByte, event.data1, event.data2,
+                                     length: event.byteCount))
     }
 }

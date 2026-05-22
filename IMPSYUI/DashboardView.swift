@@ -13,6 +13,7 @@ struct DashboardView: View {
         VStack(alignment: .leading, spacing: 12) {
             modelStatusCard
             stateCard
+            fadersCard
             perDimensionCard
             lastEventCard
             Spacer(minLength: 0)
@@ -109,6 +110,33 @@ struct DashboardView: View {
                     DimensionLED(index: i + 1, trigger: counts[i], color: color)
                 }
             }
+        }
+    }
+
+    private var fadersCard: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            sectionLabel("Direct Input")
+            VStack(spacing: 6) {
+                if viewModel.outputValues.isEmpty {
+                    Text("Load a model to drive dimensions directly")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(.vertical, 8)
+                } else {
+                    ForEach(viewModel.outputValues.indices, id: \.self) { i in
+                        DimensionFader(
+                            dimension: i + 1,
+                            modelValue: viewModel.outputValues[i],
+                            onDrag: { value in
+                                viewModel.injectInput(dimensionIndex: i, value: value)
+                            }
+                        )
+                    }
+                }
+            }
+            .padding(10)
+            .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.04)))
         }
     }
 
@@ -217,6 +245,81 @@ private struct DimensionLED: View {
         lit = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.04) {
             withAnimation(.easeOut(duration: 0.25)) { lit = false }
+        }
+    }
+}
+
+// MARK: - Dimension Fader
+
+/// Horizontal slider for one input dimension. Idle, it follows `modelValue`
+/// (the last value the RNN emitted for the matching output dimension). On
+/// touch, the user drives it instead: the slider's local value diverges from
+/// `modelValue` while dragging and calls `onDrag` so the view model can inject
+/// MIDI input — closing the loop, the engine's next output event will refresh
+/// `modelValue` and the fader will resume tracking once released.
+private struct DimensionFader: View {
+    let dimension: Int
+    let modelValue: Float
+    let onDrag: (Float) -> Void
+
+    @State private var localValue: Float = 0
+    @State private var dragActive: Bool = false
+    @State private var dragEndTask: Task<Void, Never>?
+
+    var body: some View {
+        // Custom binding so the setter fires *only* on user interaction with
+        // the slider. Model-driven writes go through `onChange(of: modelValue)`
+        // which mutates `localValue` directly — bypassing this setter, so we
+        // never falsely mark them as drags. SwiftUI Slider's onEditingChanged
+        // is unreliable on macOS (doesn't always fire false on mouse-up), so
+        // we don't depend on it; the debounce below recovers the green state.
+        let userBinding = Binding<Float>(
+            get: { localValue },
+            set: { newValue in
+                localValue = newValue
+                dragActive = true
+                onDrag(newValue)
+                scheduleDragEnd()
+            }
+        )
+
+        return HStack(spacing: 8) {
+            Text("\(dimension)")
+                .font(.system(.caption, design: .monospaced, weight: .semibold))
+                .frame(width: 22, height: 22)
+                .background(Circle().fill(Color.primary.opacity(0.08)))
+
+            Slider(value: userBinding, in: 0...1)
+                .controlSize(.small)
+                // Red while the user is driving the model (input), green while
+                // the fader is reflecting model output. Matches the IN/OUT LEDs.
+                .tint(dragActive ? .red : .green)
+
+            Text(String(format: "%.2f", localValue))
+                .font(.system(.caption, design: .monospaced))
+                .monospacedDigit()
+                .frame(width: 38, alignment: .trailing)
+                .foregroundStyle(dragActive ? .red : .green)
+        }
+        .onChange(of: modelValue) { _, newValue in
+            if !dragActive { localValue = newValue }
+        }
+        .task(id: dimension) {
+            localValue = modelValue
+        }
+        .onDisappear { dragEndTask?.cancel() }
+    }
+
+    /// End the drag (and snap back to the model's value) ~250 ms after the
+    /// last user change — the debounce window that lets us handle a stream of
+    /// drag deltas as one continuous interaction.
+    private func scheduleDragEnd() {
+        dragEndTask?.cancel()
+        dragEndTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 250_000_000)
+            guard !Task.isCancelled else { return }
+            dragActive = false
+            localValue = modelValue
         }
     }
 }

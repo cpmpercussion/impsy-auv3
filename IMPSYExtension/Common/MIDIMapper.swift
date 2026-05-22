@@ -103,6 +103,32 @@ struct MIDIMapper {
         return events
     }
 
+    // MARK: Single-mapping encode (used for UI-driven direct input)
+
+    /// Encode a normalised value (clamped to 0…1) as a MIDI event using the
+    /// given mapping. Round-trip safe: feeding the result through
+    /// `decodeInput(bytes:length:)` returns the same dimension and a 7-bit
+    /// (or 14-bit for pitch bend) quantised approximation of the value.
+    static func encode(value: Float, using mapping: DimensionMapping) -> MIDIEvent {
+        let v = max(0, min(1, value))
+        let ch = UInt8(mapping.channel - 1) & 0x0F
+        switch mapping.messageType {
+        case .noteOn:
+            let note = UInt8(mapping.number & 0x7F)
+            // Velocity carries the value so decodeInput recovers it.
+            let vel = UInt8(min(127, max(0, Int(v * 127.0 + 0.5))))
+            return MIDIEvent(0x90 | ch, note, vel)
+        case .controlChange:
+            let ccVal = UInt8(min(127, max(0, Int(v * 127.0 + 0.5))))
+            return MIDIEvent(0xB0 | ch, UInt8(mapping.number & 0x7F), ccVal)
+        case .pitchBend:
+            let raw = Int(v * 16383.0 + 0.5)
+            let lsb = UInt8(raw & 0x7F)
+            let msb = UInt8((raw >> 7) & 0x7F)
+            return MIDIEvent(0xE0 | ch, lsb, msb)
+        }
+    }
+
     // MARK: Dense vector helpers
 
     /// Build a dense input vector (length = dimension - 1) from an incoming MIDI event.
