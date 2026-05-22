@@ -104,6 +104,7 @@ public final class IMPSYAudioUnit: AUAudioUnit {
     // MARK: - Render Block
 
     public override var internalRenderBlock: AUInternalRenderBlock {
+        let inputBuf  = engine.inputBuffer
         let outputBuf = engine.outputBuffer
         return { [weak self] actionFlags, timestamp, frameCount, outputBusNumber, outputData, renderEvents, pullInputBlock in
             // This AU produces no audio — fill the output bus with silence.
@@ -111,6 +112,24 @@ public final class IMPSYAudioUnit: AUAudioUnit {
                 if let data = buffer.mData {
                     memset(data, 0, Int(buffer.mDataByteSize))
                 }
+            }
+            // Drain incoming MIDI from the render-events linked list. Many AUv3
+            // hosts (AUM included) deliver MIDI here for sample-accurate timing
+            // rather than via scheduleMIDIEventBlock, so we have to walk it.
+            var evPtr = renderEvents
+            while let event = evPtr {
+                let header = event.pointee.head
+                if header.eventType == .MIDI {
+                    let midi = event.pointee.MIDI
+                    let length = min(Int(midi.length), 3)
+                    if length >= 1 {
+                        let d = midi.data
+                        let b1: UInt8 = length > 1 ? d.1 : 0
+                        let b2: UInt8 = length > 2 ? d.2 : 0
+                        inputBuf.enqueue(RawMIDIPacket(d.0, b1, b2, length: length))
+                    }
+                }
+                evPtr = header.next.map { UnsafePointer($0) }
             }
             // Drain any MIDI output events queued by the inference engine.
             if let midiOut = self?.cachedMidiOutputBlock {
