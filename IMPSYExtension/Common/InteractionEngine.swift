@@ -160,6 +160,14 @@ final class InteractionEngine: @unchecked Sendable {
             // Cancel any in-flight response chain so it doesn't keep generating
             // from the pre-reset seed.
             self.responseGeneration &+= 1
+            // If we were already responding when reset hit, the cancelled chain
+            // won't restart on its own — `tick()` only spawns a new chain on
+            // the .call → .response transition. Kick off a fresh chain with
+            // the post-reset seed so predictions keep flowing.
+            if self.callResponseState == .response {
+                self.generateAndScheduleResponse(seed: self.lastUserInteraction,
+                                                 generation: self.responseGeneration)
+            }
         }
     }
 

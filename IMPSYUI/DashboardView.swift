@@ -67,6 +67,13 @@ struct DashboardView: View {
                 .accessibilityLabel("MIDI activity")
 
                 Spacer()
+
+                // Reset LSTM lives on the dashboard, not Settings, so it's
+                // one tap away during performance.
+                Button("Reset LSTM") { viewModel.resetLSTM() }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .disabled(!viewModel.modelStatus.isReady)
             }
             .padding(10)
             .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.04)))

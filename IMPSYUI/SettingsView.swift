@@ -21,18 +21,6 @@ struct SettingsView: View {
                 ParameterControlsView(viewModel: viewModel)
             }
 
-            VStack(alignment: .leading, spacing: 4) {
-                sectionLabel("Actions")
-                HStack {
-                    Button("Reset LSTM") { viewModel.resetLSTM() }
-                        .buttonStyle(.bordered)
-                        .disabled(!viewModel.modelStatus.isReady)
-                    Spacer()
-                }
-                .padding(10)
-                .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.04)))
-            }
-
             Spacer(minLength: 0)
         }
     }
