@@ -63,14 +63,15 @@ final class InteractionEngine: @unchecked Sendable {
     var onStateChanged: ((CallResponseState) -> Void)?
 
     /// Called on the inference queue each time a response event is emitted,
-    /// with the event's `dt` (seconds) and the MIDI it produced. Used purely
-    /// for UI activity feedback.
-    var onEventGenerated: ((Double, [MIDIEvent]) -> Void)?
+    /// with the event's `dt` (seconds), the MIDI it produced, and the 0-based
+    /// dimension indices the events correspond to (one entry per event, in the
+    /// same order). Used purely for UI activity feedback.
+    var onEventGenerated: ((Double, [MIDIEvent], [Int]) -> Void)?
 
-    /// Called on the inference queue each tick that drained at least one
-    /// mapped user MIDI event from the input buffer. Used purely for UI
-    /// activity feedback (the red ACT LED).
-    var onUserInputReceived: (() -> Void)?
+    /// Called on the inference queue for each mapped user MIDI event drained
+    /// from the input buffer, with its 0-based dimension index. Used purely for
+    /// UI activity feedback (ACT LED + per-dimension indicators).
+    var onUserInputReceived: ((Int) -> Void)?
 
     // MARK: - Init
 
@@ -205,6 +206,7 @@ final class InteractionEngine: @unchecked Sendable {
         // ── Drain MIDI input ──────────────────────────────────────────────────
         let packets = inputBuffer.dequeueAll()
         var gotUserInput = false
+        var touchedDimensions: [Int] = []
 
         for packet in packets {
             packet.withUnsafeBytes { ptr, length in
@@ -213,6 +215,7 @@ final class InteractionEngine: @unchecked Sendable {
                     if index < inputVector.count {
                         inputVector[index] = value
                     }
+                    touchedDimensions.append(index)
                     gotUserInput = true
                 }
             }
@@ -222,7 +225,9 @@ final class InteractionEngine: @unchecked Sendable {
 
         // ── User input: record it and let the RNN listen ─────────────────────
         if gotUserInput {
-            onUserInputReceived?()
+            for dim in touchedDimensions {
+                onUserInputReceived?(dim)
+            }
             let dt = max(now - lastUserInputTime, IMPSYConstants.minimumDeltaTime)
             lastUserInputTime = now
             // Full interaction vector consumed by the RNN: [dt, v_1 … v_N].
@@ -318,8 +323,10 @@ final class InteractionEngine: @unchecked Sendable {
                                   length: event.byteCount)
                 )
             }
-            // …notify the UI…
-            self.onEventGenerated?(dt, events)
+            // …notify the UI (each event maps to the same-indexed output
+            // mapping, so dimensions count up from 0)…
+            let dims = Array(0..<events.count)
+            self.onEventGenerated?(dt, events, dims)
             // …then generate the event that follows it.
             self.generateAndScheduleResponse(seed: nextSeed, generation: generation)
         }

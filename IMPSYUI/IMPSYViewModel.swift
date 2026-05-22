@@ -49,6 +49,13 @@ final class IMPSYViewModel: ObservableObject {
     @Published var lastEventSummary: String = "—"
     @Published var lastEventDt: Double = 0
 
+    // Per-dimension activity (one counter per user dimension, 0-based index =
+    // dim 1 .. dim N). Incremented every time that dimension sees activity so
+    // the dashboard can flash a per-channel indicator without re-renders for
+    // unrelated state.
+    @Published var inputDimensionCounts: [Int] = []
+    @Published var outputDimensionCounts: [Int] = []
+
     // Parameter values (two-way bound to AUParameterTree)
     @Published var threshold: Float = ParameterDefaults.threshold
     @Published var sigmaTemp: Float = ParameterDefaults.sigmaTemp
@@ -111,6 +118,7 @@ final class IMPSYViewModel: ObservableObject {
             modelName   = au.currentModelDisplayName ?? "Unknown"
             modelStatus = .ready(config)
             mappings    = au.currentMappings
+            resizeDimensionCounts(toModelDimension: config.dimension)
         }
 
         // Sync the current call/response state (the engine may already be running)
@@ -144,15 +152,25 @@ final class IMPSYViewModel: ObservableObject {
             self.generatedEventCount += 1
             self.lastEventSummary = (note.userInfo?["summary"] as? String) ?? "—"
             self.lastEventDt = (note.userInfo?["dt"] as? Double) ?? 0
+            if let dims = note.userInfo?["dimensions"] as? [Int] {
+                for dim in dims where self.outputDimensionCounts.indices.contains(dim) {
+                    self.outputDimensionCounts[dim] += 1
+                }
+            }
         }
 
-        // Listen for inbound user MIDI events (red ACT LED)
+        // Listen for inbound user MIDI events (red ACT LED + per-dim flash)
         let inputToken = NotificationCenter.default.addObserver(
             forName: .IMPSYUserInputReceived,
             object: au,
             queue: .main
-        ) { [weak self] _ in
-            self?.inputEventCount += 1
+        ) { [weak self] note in
+            guard let self else { return }
+            self.inputEventCount += 1
+            if let dim = note.userInfo?["dimension"] as? Int,
+               self.inputDimensionCounts.indices.contains(dim) {
+                self.inputDimensionCounts[dim] += 1
+            }
         }
 
         notificationTokens = [modelToken, stateToken, eventToken, inputToken]
@@ -170,11 +188,26 @@ final class IMPSYViewModel: ObservableObject {
                 var updated = mappings
                 updated.resize(toModelDimension: config.dimension)
                 mappings = updated
+                resizeDimensionCounts(toModelDimension: config.dimension)
             }
         case "error":
             modelStatus = .error((info["message"] as? String) ?? "Unknown error")
         default:
             break
+        }
+    }
+
+    // MARK: - Per-dimension activity sizing
+
+    /// Resize input/output activity counters to match the model's user
+    /// dimensions (dim 0 is dt and is not user-mapped, so we use dimension - 1).
+    private func resizeDimensionCounts(toModelDimension dimension: Int) {
+        let userDims = max(0, dimension - 1)
+        if inputDimensionCounts.count != userDims {
+            inputDimensionCounts = Array(repeating: 0, count: userDims)
+        }
+        if outputDimensionCounts.count != userDims {
+            outputDimensionCounts = Array(repeating: 0, count: userDims)
         }
     }
 

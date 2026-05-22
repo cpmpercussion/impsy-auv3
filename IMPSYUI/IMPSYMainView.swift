@@ -3,25 +3,45 @@ import AudioToolbox
 import CoreAudioKit
 
 // MARK: - Main View
+//
+// Three-screen layout: Dashboard / Settings / MIDI Mapping. A segmented picker
+// at the top switches screens. Each screen scrolls independently so the
+// minimum AUv3 surface (≈ 320×240 on iPhone) stays usable.
 
 public struct IMPSYMainView: View {
     @ObservedObject var viewModel: IMPSYViewModel
+    @State private var screen: Screen = .dashboard
+
+    enum Screen: String, CaseIterable, Identifiable {
+        case dashboard = "Dashboard"
+        case settings  = "Settings"
+        case mapping   = "Mapping"
+        var id: String { rawValue }
+    }
 
     init(viewModel: IMPSYViewModel) {
         self.viewModel = viewModel
     }
 
     public var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                headerView
-                modelSection
-                parametersSection
-                activitySection
-                mappingsSection
+        VStack(spacing: 10) {
+            headerView
+
+            Picker("Screen", selection: $screen) {
+                ForEach(Screen.allCases) { s in
+                    Text(s.rawValue).tag(s)
+                }
             }
-            .padding(16)
+            .pickerStyle(.segmented)
+            .padding(.horizontal, 16)
+
+            ScrollView {
+                screenContent
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 16)
+            }
         }
+        .padding(.top, 12)
         .background(platformBackground)
         #if os(macOS)
         // Give the macOS window a sensible minimum; iOS adapts to its host.
@@ -29,7 +49,19 @@ public struct IMPSYMainView: View {
         #endif
     }
 
-    // MARK: - Sections
+    @ViewBuilder
+    private var screenContent: some View {
+        switch screen {
+        case .dashboard:
+            DashboardView(viewModel: viewModel)
+        case .settings:
+            SettingsView(viewModel: viewModel)
+        case .mapping:
+            // MappingEditorView contains its own padded background, so it
+            // slots straight into the scroll view.
+            MappingEditorView(viewModel: viewModel)
+        }
+    }
 
     private var headerView: some View {
         HStack {
@@ -41,98 +73,7 @@ public struct IMPSYMainView: View {
                 .padding(.leading, 2)
             Spacer()
         }
-    }
-
-    private var modelSection: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            sectionLabel("Model")
-            ModelStatusView(viewModel: viewModel)
-        }
-    }
-
-    private var parametersSection: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            sectionLabel("Parameters")
-            ParameterControlsView(viewModel: viewModel)
-        }
-    }
-
-    private var activitySection: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            sectionLabel("Activity")
-            VStack(spacing: 10) {
-                HStack {
-                    HStack(spacing: 6) {
-                        Circle()
-                            .fill(viewModel.callResponseState == "RESPONSE" ? Color.green : Color.orange)
-                            .frame(width: 10, height: 10)
-                        Text(viewModel.callResponseState)
-                            .font(.system(.subheadline, design: .monospaced, weight: .semibold))
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(Capsule().fill(Color.primary.opacity(0.08)))
-
-                    // Activity LEDs: red flashes on inbound user MIDI,
-                    // green flashes on each RNN-generated event.
-                    HStack(spacing: 4) {
-                        ActivityLED(trigger: viewModel.inputEventCount, color: .red)
-                        ActivityLED(trigger: viewModel.generatedEventCount, color: .green)
-                        Text("ACT")
-                            .font(.system(.caption2, design: .monospaced))
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding(.leading, 6)
-                    .accessibilityElement(children: .combine)
-                    .accessibilityLabel("MIDI activity")
-
-                    Spacer()
-
-                    Button("Reset LSTM") { viewModel.resetLSTM() }
-                        .buttonStyle(.bordered)
-                        .disabled(!viewModel.modelStatus.isReady)
-                }
-
-                HStack(spacing: 0) {
-                    metric("Events", "\(viewModel.generatedEventCount)")
-                    Divider().frame(height: 30)
-                    metric("Last Δt", String(format: "%.3f s", viewModel.lastEventDt))
-                    Divider().frame(height: 30)
-                    metric("Last MIDI", viewModel.lastEventSummary)
-                }
-            }
-            .padding(10)
-            .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.04)))
-        }
-    }
-
-    private func metric(_ label: String, _ value: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(label)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-            Text(value)
-                .font(.system(.callout, design: .monospaced, weight: .medium))
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var mappingsSection: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            sectionLabel("MIDI Mappings")
-            MappingEditorView(viewModel: viewModel)
-                .frame(minHeight: 200)
-        }
-    }
-
-    private func sectionLabel(_ text: String) -> some View {
-        Text(text)
-            .font(.system(.caption, design: .rounded, weight: .semibold))
-            .foregroundStyle(.secondary)
-            .textCase(.uppercase)
-            .tracking(0.5)
+        .padding(.horizontal, 16)
     }
 
     private var platformBackground: Color {
@@ -143,36 +84,6 @@ public struct IMPSYMainView: View {
         #else
         Color.white
         #endif
-    }
-}
-
-// MARK: - Activity LED
-
-/// A small indicator that flashes once each time `trigger` changes,
-/// emulating the IN/OUT activity LEDs on a MIDI interface.
-private struct ActivityLED: View {
-    /// Increments once per event; every change triggers one flash.
-    let trigger: Int
-    let color: Color
-    @State private var lit = false
-
-    var body: some View {
-        Circle()
-            .fill(lit ? color : color.opacity(0.18))
-            .frame(width: 9, height: 9)
-            .overlay(Circle().strokeBorder(color.opacity(0.4), lineWidth: 0.5))
-            .shadow(color: lit ? color : .clear, radius: lit ? 3.5 : 0)
-            .onChange(of: trigger) { _, _ in flash() }
-            .accessibilityHidden(true)
-    }
-
-    private func flash() {
-        // Two transactions: an instant "on", then a quick fade. Doing both in
-        // one synchronous block would net to no change and never render lit.
-        lit = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.04) {
-            withAnimation(.easeOut(duration: 0.2)) { lit = false }
-        }
     }
 }
 

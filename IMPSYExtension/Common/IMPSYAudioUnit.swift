@@ -154,7 +154,7 @@ public final class IMPSYAudioUnit: AUAudioUnit {
                 userInfo: ["state": state.rawValue]
             )
         }
-        engine.onEventGenerated = { [weak self] dt, events in
+        engine.onEventGenerated = { [weak self] dt, events, dims in
             let summary: String
             if let first = events.first {
                 summary = events.count > 1 ? "\(first.summary) +\(events.count - 1)"
@@ -165,13 +165,14 @@ public final class IMPSYAudioUnit: AUAudioUnit {
             NotificationCenter.default.post(
                 name: .IMPSYEventGenerated,
                 object: self,
-                userInfo: ["dt": dt, "summary": summary]
+                userInfo: ["dt": dt, "summary": summary, "dimensions": dims]
             )
         }
-        engine.onUserInputReceived = { [weak self] in
+        engine.onUserInputReceived = { [weak self] dim in
             NotificationCenter.default.post(
                 name: .IMPSYUserInputReceived,
-                object: self
+                object: self,
+                userInfo: ["dimension": dim]
             )
         }
     }
