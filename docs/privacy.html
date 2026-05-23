@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Privacy Policy — IMPSY</title>
+  <meta name="description" content="Privacy policy for IMPSY, an AUv3 MIDI Processor plugin for iOS and macOS. No accounts, no analytics, no tracking — MIDI stays on-device.">
+
+  <link rel="icon" type="image/png" sizes="180x180" href="images/icon-180.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="images/icon-180.png">
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+
+  <style>
+    :root {
+      --cossack-green: #437742;
+      --cossack-green-deep: #2b5230;
+      --cream-yellow: #fdbf68;
+      --sulphur-yellow-soft: #fdf3d2;
+      --ink: #1b2a1d;
+      --ink-soft: #4a554c;
+      --paper: #fbf8ee;
+    }
+    html, body { background: var(--paper); }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      color: var(--ink);
+    }
+    a { color: var(--cossack-green); text-decoration: none; }
+    a:hover { color: var(--cossack-green-deep); text-decoration: underline; }
+
+    .navbar {
+      background: rgba(251, 248, 238, 0.85);
+      backdrop-filter: saturate(180%) blur(12px);
+      border-bottom: 1px solid rgba(67, 119, 66, 0.12);
+    }
+    .navbar-brand { font-weight: 700; color: var(--ink); }
+    .navbar-brand img { height: 32px; width: 32px; border-radius: 7px; }
+    .nav-link { color: var(--ink-soft); }
+    .nav-link:hover { color: var(--cossack-green-deep); }
+
+    main h1 {
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+    main h2 {
+      font-weight: 700;
+      margin-top: 2rem;
+      margin-bottom: 0.75rem;
+      font-size: 1.25rem;
+      color: var(--ink);
+    }
+    main p, main ul { color: var(--ink-soft); }
+    main code {
+      background: rgba(67, 119, 66, 0.08);
+      color: var(--cossack-green-deep);
+      padding: 0.1rem 0.35rem;
+      border-radius: 4px;
+      font-size: 0.9em;
+    }
+
+    .privacy-pill {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      background: rgba(67, 119, 66, 0.12);
+      color: var(--cossack-green-deep);
+      border-radius: 999px;
+      padding: 0.30rem 0.85rem;
+      font-size: 0.82rem;
+      font-weight: 600;
+    }
+    .privacy-pill::before {
+      content: "";
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--cossack-green);
+      box-shadow: 0 0 0 4px rgba(67, 119, 66, 0.18);
+    }
+
+    footer {
+      background: var(--cossack-green-deep);
+      color: var(--sulphur-yellow-soft);
+      padding: 2.5rem 0;
+      margin-top: 3rem;
+      font-size: 0.9rem;
+    }
+    footer a { color: var(--cream-yellow); }
+    footer a:hover { color: #fff; }
+  </style>
+</head>
+<body>
+
+<nav class="navbar navbar-expand-md sticky-top">
+  <div class="container">
+    <a class="navbar-brand d-flex align-items-center gap-2" href="index.html">
+      <img src="images/icon-180.png" alt="">
+      <span>IMPSY</span>
+    </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMain" aria-controls="navMain" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navMain">
+      <ul class="navbar-nav ms-auto">
+        <li class="nav-item"><a class="nav-link" href="index.html#about">About</a></li>
+        <li class="nav-item"><a class="nav-link" href="index.html#how-it-works">How it works</a></li>
+        <li class="nav-item"><a class="nav-link" href="index.html#screens">Screens</a></li>
+        <li class="nav-item"><a class="nav-link" href="index.html#support">Support</a></li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<main class="container py-5" style="max-width: 760px;">
+  <h1 class="mb-2">Privacy Policy</h1>
+  <p class="text-muted">Last updated: 23 May 2026</p>
+
+  <p>IMPSY is an AUv3 MIDI Processor plugin for iOS, iPadOS and macOS.
+  It is designed to be played, not to collect data about you. This page
+  explains what IMPSY does — and does not do — with your information.</p>
+
+  <p><span class="privacy-pill">On-device. No network. No telemetry.</span></p>
+
+  <h2>What we collect</h2>
+  <p><strong>Nothing.</strong> IMPSY has no user accounts, no analytics, no
+  advertising and no tracking. The app does not collect, store or transmit any
+  personal information about you or your device to the developer or to any
+  third party.</p>
+
+  <h2>How the app uses your device</h2>
+  <p>IMPSY runs entirely on your device. The neural-network inference happens
+  locally via Apple's audio extension sandbox and the TensorFlow Lite runtime
+  bundled with the plugin. The MIDI you play, and the MIDI IMPSY produces in
+  response, stay on the device throughout.</p>
+
+  <p>The plugin stores your settings (loaded model, MIDI mappings, parameter
+  values, MIDI Thru state) in the AUv3 host's session state — the same state
+  your DAW saves when you save a project. That state lives wherever your DAW
+  puts it (typically inside the project file on your device or in your iCloud
+  Drive if you have iCloud sync on).</p>
+
+  <h2>What about the model file?</h2>
+  <p>If you load a custom <code>.tflite</code> model via the Load Model button,
+  IMPSY stores a security-scoped reference to that file so it can reopen it the
+  next time your session loads. The file itself stays where you put it; IMPSY
+  does not upload or share it.</p>
+
+  <h2>Network access</h2>
+  <p>The plugin does not make any network calls. It does not phone home, check
+  for updates, fetch ads, send crash reports, or sync data to a server. If your
+  device is offline, IMPSY behaves identically to when it is online.</p>
+
+  <h2>Permissions the app may request</h2>
+  <p>IMPSY does not request access to your contacts, photos, location, camera or
+  microphone. The only system prompt you might see is the standard file picker
+  when you tap <em>Load Model…</em>, which lets you choose a <code>.tflite</code>
+  file from Files (iOS) or the Finder (macOS).</p>
+
+  <h2>Crash reports</h2>
+  <p>If you have Apple's <em>Share with App Developers</em> setting enabled in
+  your device's Privacy &amp; Security settings, Apple may forward anonymised
+  crash reports to the developer through App Store Connect. You can opt out at
+  any time in your device settings. The developer receives no other diagnostic
+  information.</p>
+
+  <h2>Children</h2>
+  <p>IMPSY is suitable for all ages and does not collect any information from
+  anyone, including children.</p>
+
+  <h2>Changes to this policy</h2>
+  <p>If this policy changes, the updated version will be posted on this page
+  with a new "last updated" date.</p>
+
+  <h2>Contact</h2>
+  <p>If you have questions about this policy, please contact Charles Martin
+  via <a href="https://charlesmartin.au">charlesmartin.au</a>, by email at
+  <a href="mailto:charles.martin@anu.edu.au?subject=IMPSY%20privacy">charles.martin@anu.edu.au</a>,
+  or open an issue on the
+  <a href="https://github.com/cpmpercussion/impsy-auv3">IMPSY-AUv3 GitHub repository</a>.</p>
+</main>
+
+<footer>
+  <div class="container d-flex flex-wrap justify-content-between gap-3">
+    <div>
+      <strong>IMPSY</strong> &middot; by <a href="https://charlesmartin.au">Charles Martin</a>
+    </div>
+    <div>
+      <a href="index.html">Home</a>
+      &middot; <a href="https://github.com/cpmpercussion/impsy-auv3">Source on GitHub</a>
+      &middot; <a href="https://github.com/cpmpercussion/impsy">IMPSY framework</a>
+    </div>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+</body>
+</html>
