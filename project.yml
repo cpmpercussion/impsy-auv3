@@ -12,6 +12,11 @@ options:
 settings:
   base:
     DEVELOPMENT_TEAM: EDH387FRHA
+    # macOS support is Apple Silicon only — the vended TFLite xcframework
+    # ships no x86_64 macOS slice (see scripts/build_tflite_xcframework.sh).
+    # Without this, Xcode Cloud's Release archive builds universal by default
+    # and fails to link _TfLite* symbols on x86_64.
+    "ARCHS[sdk=macosx*]": arm64
 
 # TFLite is vended through Packages/TensorFlowLite as a local Swift Package.
 # The package's binary xcframework is produced by
