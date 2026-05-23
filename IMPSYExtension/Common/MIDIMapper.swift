@@ -63,7 +63,7 @@ struct MIDIMapper {
             case .controlChange:
                 guard messageType == 0xB0, bytes[1] == UInt8(mapping.number) else { continue }
                 let value = length >= 3 ? bytes[2] : 0
-                return (mapping.id, Float(value) / 127.0)
+                return (mapping.id, mapping.normalize(ccValue: Int(value)))
             case .pitchBend:
                 guard messageType == 0xE0 else { continue }
                 let lsb = length >= 2 ? Int(bytes[1]) : 0
@@ -91,7 +91,7 @@ struct MIDIMapper {
                 let note = UInt8(clamping: Int(v * 127.0 + 0.5))
                 events.append(MIDIEvent(0x90 | ch, note, 64))
             case .controlChange:
-                let ccVal = UInt8(clamping: Int(v * 127.0 + 0.5))
+                let ccVal = UInt8(clamping: mapping.denormalize(toCCValue: v))
                 events.append(MIDIEvent(0xB0 | ch, UInt8(mapping.number & 0x7F), ccVal))
             case .pitchBend:
                 let raw = Int(v * 16383.0 + 0.5)
@@ -119,7 +119,7 @@ struct MIDIMapper {
             let vel = UInt8(min(127, max(0, Int(v * 127.0 + 0.5))))
             return MIDIEvent(0x90 | ch, note, vel)
         case .controlChange:
-            let ccVal = UInt8(min(127, max(0, Int(v * 127.0 + 0.5))))
+            let ccVal = UInt8(min(127, max(0, mapping.denormalize(toCCValue: v))))
             return MIDIEvent(0xB0 | ch, UInt8(mapping.number & 0x7F), ccVal)
         case .pitchBend:
             let raw = Int(v * 16383.0 + 0.5)

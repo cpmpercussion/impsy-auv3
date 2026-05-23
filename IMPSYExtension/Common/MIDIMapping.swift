@@ -35,6 +35,12 @@ struct DimensionMapping: Codable, Identifiable, Equatable {
     var channel: Int
     /// Note number (0–127) for noteOn, CC number (0–127) for controlChange; ignored for pitchBend
     var number: Int
+    /// Lower bound of the CC range (0–127). Currently only consulted for
+    /// `controlChange` — matches IMPSY's 5-tuple TOML form
+    /// `["control_change", ch, cc, min, max]`.
+    var minValue: Int = 0
+    /// Upper bound of the CC range (0–127).
+    var maxValue: Int = 127
 
     static func defaults(forDimension index: Int) -> DimensionMapping {
         DimensionMapping(
@@ -43,6 +49,59 @@ struct DimensionMapping: Codable, Identifiable, Equatable {
             channel: 1,
             number: max(0, min(127, 73 + index))   // CC 74, 75, 76...
         )
+    }
+
+    // MARK: - Codable
+    //
+    // Custom decode lets older persisted state (fullState dictionaries written
+    // before min/max existed) round-trip without breaking — missing fields
+    // fall back to the full 0–127 range.
+
+    private enum CodingKeys: String, CodingKey {
+        case id, messageType, channel, number, minValue, maxValue
+    }
+
+    init(id: Int,
+         messageType: MIDIMessageType,
+         channel: Int,
+         number: Int,
+         minValue: Int = 0,
+         maxValue: Int = 127) {
+        self.id = id
+        self.messageType = messageType
+        self.channel = channel
+        self.number = number
+        self.minValue = minValue
+        self.maxValue = maxValue
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id          = try c.decode(Int.self, forKey: .id)
+        messageType = try c.decode(MIDIMessageType.self, forKey: .messageType)
+        channel     = try c.decode(Int.self, forKey: .channel)
+        number      = try c.decode(Int.self, forKey: .number)
+        minValue    = try c.decodeIfPresent(Int.self, forKey: .minValue) ?? 0
+        maxValue    = try c.decodeIfPresent(Int.self, forKey: .maxValue) ?? 127
+    }
+}
+
+extension DimensionMapping {
+    /// Map a 7-bit MIDI CC value through this mapping's min/max range into
+    /// the model's normalised [0, 1] space.
+    func normalize(ccValue raw: Int) -> Float {
+        let span = maxValue - minValue
+        guard span != 0 else { return 0 }
+        let clamped = max(minValue, min(maxValue, raw))
+        return Float(clamped - minValue) / Float(span)
+    }
+
+    /// Map a normalised [0, 1] value through this mapping's min/max range to
+    /// an integer 7-bit MIDI CC value (clamped to 0…127).
+    func denormalize(toCCValue v: Float) -> Int {
+        let clamped = max(0, min(1, v))
+        let scaled = Float(minValue) + clamped * Float(maxValue - minValue)
+        return max(0, min(127, Int((scaled).rounded())))
     }
 }
 

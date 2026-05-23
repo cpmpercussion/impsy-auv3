@@ -21,6 +21,11 @@ struct SettingsView: View {
                 ParameterControlsView(viewModel: viewModel)
             }
 
+            VStack(alignment: .leading, spacing: 4) {
+                sectionLabel("Configuration")
+                ConfigPickerControls(viewModel: viewModel)
+            }
+
             Spacer(minLength: 0)
         }
     }
