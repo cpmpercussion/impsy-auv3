@@ -7,20 +7,21 @@ options:
   xcodeVersion: "16.0"
   swift: "5.9"
   generateEmptyDirectories: true
-  postGenCommand: echo "Project generated. See README.md to add TFLite dependency."
+  postGenCommand: echo "Project generated. Run scripts/build_tflite_xcframework.sh before first build."
 
 settings:
   base:
     DEVELOPMENT_TEAM: EDH387FRHA
 
-# NOTE: After generating, add TFLite via File → Add Package Dependencies in Xcode.
-# Recommended: https://github.com/google-ai-edge/LiteRT  product: LiteRT
-# Then change `import TensorFlowLite` to `import LiteRT` in TFLiteRNN.swift
+# TFLite is vended through Packages/TensorFlowLite as a local Swift Package.
+# The package's binary xcframework is produced by
+# `scripts/build_tflite_xcframework.sh` (combining kewlbear iOS slices with
+# a tphakala macOS arm64 slice). Run that script once after cloning; it's
+# also invoked from ci_scripts/ci_post_clone.sh on Xcode Cloud runners.
 
 packages:
-  TensorFlowLiteSwift:
-    url: https://github.com/kewlbear/TensorFlowLiteSwift.git
-    branch: master
+  TensorFlowLite:
+    path: Packages/TensorFlowLite
   TOMLKit:
     url: https://github.com/LebJe/TOMLKit.git
     from: "0.6.0"
@@ -58,7 +59,7 @@ targets:
       - target: IMPSYExtension-iOS
         embed: true
         codeSign: true
-      - package: TensorFlowLiteSwift
+      - package: TensorFlowLite
       - package: TOMLKit
       - sdk: CoreML.framework
     settings:
@@ -118,6 +119,7 @@ targets:
       - target: IMPSYExtension-macOS
         embed: true
         codeSign: true
+      - package: TensorFlowLite
       - package: TOMLKit
     settings:
       base:
@@ -164,7 +166,7 @@ targets:
       # App icon — AUv3 hosts (AUM) read the icon from the .appex bundle
       - IMPSYHost/Assets.xcassets
     dependencies:
-      - package: TensorFlowLiteSwift
+      - package: TensorFlowLite
       - package: TOMLKit
       - sdk: CoreML.framework
     settings:
@@ -196,6 +198,7 @@ targets:
         buildPhase: resources
         excludes: ["AppIcon"]
     dependencies:
+      - package: TensorFlowLite
       - package: TOMLKit
     settings:
       base:
@@ -219,18 +222,19 @@ targets:
       - path: Tests
         excludes:
           - "Fixtures/**"
-      # TOML fixtures are bundled as resources so IMPSYConfigTests can read
-      # them via `Bundle(for:).url(forResource:)`. .tflite fixtures stay
-      # excluded — the macOS test target can't run TFLite anyway.
+      # Fixtures (TOML configs + .tflite models) are bundled as resources so
+      # tests can read them via `Bundle(for:).url(forResource:)`.
       - path: Tests/Fixtures
         buildPhase: resources
         includes:
           - "*.toml"
+          - "*.tflite"
       - path: IMPSYExtension/Common
         excludes:
           # Exclude AU-specific files that need entitlements/framework
           - "IMPSYAudioUnit*.swift"
     dependencies:
+      - package: TensorFlowLite
       - package: TOMLKit
     settings:
       base:

@@ -12,6 +12,13 @@ echo "ci_post_clone: generating Xcode project"
 cd "$CI_PRIMARY_REPOSITORY_PATH"
 xcodegen generate
 
+# Build TFLite xcframework. The local SPM package Packages/TensorFlowLite
+# vends a binaryTarget pointing at a vendored xcframework that is not
+# committed to git (assembled from prebuilt iOS + macOS slices). See
+# scripts/build_tflite_xcframework.sh and issue #14.
+echo "ci_post_clone: building TensorFlowLiteC.xcframework"
+./scripts/build_tflite_xcframework.sh
+
 # Xcode Cloud disables automatic SPM resolution, so it requires Package.resolved
 # to be present in the generated .xcodeproj before the build step runs.
 echo "ci_post_clone: installing Package.resolved into generated project"

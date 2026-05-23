@@ -1,7 +1,5 @@
 import Foundation
-#if os(iOS)
 import TensorFlowLite
-#endif
 
 // MARK: - Model Configuration
 
@@ -59,7 +57,6 @@ enum ModelInspector {
     }
 
     static func inspect(modelURL: URL) throws -> ModelConfig {
-#if os(iOS)
         let interpreter: Interpreter
         do {
             interpreter = try Interpreter(modelPath: modelURL.path)
@@ -143,8 +140,5 @@ enum ModelInspector {
             hiddenUnits: hiddenUnits ?? 64,
             numMixtures: mixtures
         )
-#else
-        throw InspectionError.failedToLoad("TFLite inference is not available on macOS")
-#endif
     }
 }

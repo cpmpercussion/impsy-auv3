@@ -9,11 +9,18 @@ AUv3 MIDI Processor plugin (type: `aumi`) for iOS 17+ and macOS 14+ that runs [I
 xcodegen generate
 ```
 
-**TFLite dependency** — declared in `project.yml` (`packages:` section), resolved automatically by Xcode on first open. No manual steps needed after `xcodegen generate`.
-- Package: `https://github.com/kewlbear/TensorFlowLiteSwift.git` (branch: `master`)
-- Linked to: `IMPSYExtension-iOS`, `IMPSYExtension-macOS`, `IMPSYHost-iOS` (host must embed it so the iOS extension can load it)
-- Use `import TensorFlowLite` in `TFLiteRNN.swift` and `ModelInspector.swift`
-- Note: `https://github.com/google-ai-edge/LiteRT` does NOT have a `Package.swift` and cannot be used as an SPM dependency
+**Build the TFLite xcframework** (must be done once after cloning, and after any change to `scripts/build_tflite_xcframework.sh`):
+```bash
+./scripts/build_tflite_xcframework.sh
+```
+
+**TFLite dependency** — vended through `Packages/TensorFlowLite`, a local Swift package wired up by xcodegen. Linked into all four app/extension targets and the test target (the host must embed it so the extension can load it).
+- The Swift wrapper sources under `Packages/TensorFlowLite/Sources/TensorFlowLite/` are vendored from `kewlbear/TensorFlowLiteSwift` (Apache 2.0).
+- The binary `TensorFlowLiteC.xcframework` is **not committed** — it is assembled by `scripts/build_tflite_xcframework.sh` from:
+  - iOS slices: kewlbear's `TensorFlowLiteC.xcframework.zip` release (v2.14.0, packaged as `0.0.20250619`).
+  - macOS arm64 slice: `tphakala/tflite_c` v2.17.1 darwin_arm64 dylib, repacked as a versioned framework with deployment target lowered via `vtool` to match the project's macOS 14.0 minimum and headers/modulemap copied from the iOS slice (TFLite C ABI is stable across 2.14↔2.17).
+- macOS support is **Apple Silicon only**. There is no reliable v2.17.1 darwin_amd64 prebuilt; supporting Intel Macs would require building TFLite from source.
+- Use `import TensorFlowLite` in `TFLiteRNN.swift` and `ModelInspector.swift`.
 
 **Signing** — set Development Team on all 4 targets in Xcode after generating.
 
@@ -27,7 +34,9 @@ IMPSYExtension/macOS/                ← macOS extension Info.plist + entitlemen
 IMPSYHost/iOS/                       ← container iOS app (required by App Store)
 IMPSYHost/macOS/                     ← container macOS app
 IMPSYUI/                             ← SwiftUI views + view model (shared by app + extension)
+Packages/TensorFlowLite/             ← local Swift package vending TFLite (binary xcframework + Swift wrapper)
 Tests/                               ← unit tests (run on macOS target)
+scripts/build_tflite_xcframework.sh  ← assembles Packages/TensorFlowLite/Frameworks/TensorFlowLiteC.xcframework
 ```
 
 ## Key files and responsibilities
@@ -147,10 +156,10 @@ Defaults match `configs/AiC-charles-u6midipro.toml` in the IMPSY repo.
 
 ## Running tests
 
-Tests require the macOS target. They are in `Tests/` and import `IMPSYExtension_macOS`. Live model tests (`ModelInspectorTests`) skip automatically if no `.tflite` file is found at `../impsy/models/`.
+Tests run on the macOS target. They are in `Tests/` and are bundled into the `IMPSYTests` target. `testInspectBundledSmallModel` exercises end-to-end TFLite inference against a small `.tflite` fixture shipped with the test bundle, so it doubles as a smoke test that the macOS xcframework loads correctly. The pair of `testInspectRealModel` / `testInspectSmallModel` tests look for models at `../impsy/models/` and skip otherwise.
 
 ```bash
-xcodebuild test -project IMPSY-AUv3.xcodeproj -scheme IMPSYTests -destination 'platform=macOS'
+xcodebuild test -project IMPSY-AUv3.xcodeproj -scheme IMPSYHost-macOS -destination 'platform=macOS'
 ```
 
 ## Common tasks
@@ -159,6 +168,12 @@ xcodebuild test -project IMPSY-AUv3.xcodeproj -scheme IMPSYTests -destination 'p
 ```bash
 xcodegen generate
 ```
+
+**Rebuild the TFLite xcframework** (after editing `scripts/build_tflite_xcframework.sh` or bumping versions):
+```bash
+./scripts/build_tflite_xcframework.sh
+```
+The script is also run by `ci_scripts/ci_post_clone.sh` so Xcode Cloud builds pick up a fresh xcframework before SPM resolution.
 
 **Add a new AU parameter:**
 1. Add case to `ParameterAddress` enum in `IMPSYParameters.swift`

@@ -14,7 +14,6 @@ enum TFLiteRNNError: Error, LocalizedError {
     }
 }
 
-#if os(iOS)
 import TensorFlowLite
 
 // MARK: - Interpreter warm-up
@@ -283,24 +282,3 @@ final class TFLiteRNN {
         return 0   // single-layer fallback
     }
 }
-
-#else
-
-// MARK: - TFLiteRNN (macOS stub — TFLite xcframework is iOS-only)
-
-final class TFLiteRNN {
-    let config: ModelConfig
-
-    init(modelData: Data, config: ModelConfig) throws {
-        self.config = config
-        throw TFLiteRNNError.tensorNotFound("TFLite inference is not available on macOS")
-    }
-
-    func generate(input: [Float], piTemp: Float, sigmaTemp: Float) throws -> [Float] {
-        throw TFLiteRNNError.tensorNotFound("TFLite inference is not available on macOS")
-    }
-
-    func resetStates() {}
-}
-
-#endif
