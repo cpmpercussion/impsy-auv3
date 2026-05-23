@@ -117,6 +117,7 @@ final class InteractionEngine: @unchecked Sendable {
             guard let self else { return }
             do {
                 let newRNN = try TFLiteRNN(modelData: modelData, config: config)
+                self.flushAllNoteOffs()
                 self.rnn = newRNN
                 // Match the IMPSY Python reference (impsy/interaction.py): seed the
                 // first interaction with a random sample so response mode primes from
@@ -140,16 +141,19 @@ final class InteractionEngine: @unchecked Sendable {
 
     func clearModel() {
         inferenceQueue.async { [weak self] in
-            self?.rnn = nil
-            self?.inputVector = []
+            guard let self else { return }
+            self.flushAllNoteOffs()
+            self.rnn = nil
+            self.inputVector = []
             // Cancel any in-flight response chain.
-            self?.responseGeneration &+= 1
+            self.responseGeneration &+= 1
         }
     }
 
     func resetLSTMStates() {
         inferenceQueue.async { [weak self] in
             guard let self else { return }
+            self.flushAllNoteOffs()
             self.rnn?.resetStates()
             // After zeroing the LSTM, drive one random sample through the RNN so
             // it leaves blank state before any response generation. Same seed shape
@@ -191,7 +195,11 @@ final class InteractionEngine: @unchecked Sendable {
 
     func updateMappings(_ mappings: MIDIMappingSet) {
         inferenceQueue.async { [weak self] in
-            self?.mapper.mappings = mappings
+            guard let self else { return }
+            // Output mappings may move notes to different channels; flush any
+            // outstanding notes against the old mappings so they do not hang.
+            self.flushAllNoteOffs()
+            self.mapper.mappings = mappings
         }
     }
 
@@ -291,6 +299,20 @@ final class InteractionEngine: @unchecked Sendable {
             // Cancel the in-flight response chain: any pending generation sees
             // the bumped token and stops.
             responseGeneration &+= 1
+            // The last RNN-emitted note would otherwise hang on the receiving
+            // synth until the next response chain plays another one.
+            flushAllNoteOffs()
+        }
+    }
+
+    /// Drain note_off events for every channel with an outstanding note_on
+    /// straight into the output ring buffer. Must be called on `inferenceQueue`.
+    private func flushAllNoteOffs() {
+        for event in mapper.releaseAllNotes() {
+            outputBuffer.enqueue(
+                RawMIDIPacket(event.statusByte, event.data1, event.data2,
+                              length: event.byteCount)
+            )
         }
     }
 
