@@ -52,6 +52,11 @@ extension IMPSYAudioUnit {
 
     /// Load a model from a user-selected URL.
     /// Persists a security-scoped bookmark so the model survives session restore.
+    ///
+    /// The security scope is only valid for the synchronous span of this
+    /// function, so we read the model bytes into memory here and hand them
+    /// (not the URL) to the engine. The engine swaps in the new RNN on its
+    /// own queue and never touches the user's URL.
     func loadModel(url: URL) {
         // Access must be started before creating the bookmark
         let accessing = url.startAccessingSecurityScopedResource()
@@ -72,7 +77,8 @@ extension IMPSYAudioUnit {
             )
             #endif
 
-            let config = try ModelInspector.inspect(modelURL: url)
+            let modelData = try Data(contentsOf: url)
+            let config = try ModelInspector.inspect(modelData: modelData)
             _currentModelConfig       = config
             _currentModelDisplayName  = url.lastPathComponent
             _modelBookmarkData        = bookmark
@@ -83,7 +89,9 @@ extension IMPSYAudioUnit {
             _currentMappings = updated
             engine.updateMappings(updated)
 
-            engine.loadModel(url: url, config: config)
+            engine.loadModel(modelData: modelData,
+                             displayName: url.lastPathComponent,
+                             config: config)
 
             NotificationCenter.default.post(name: .IMPSYModelStatusChanged, object: self,
                                             userInfo: ["status": "ready",
@@ -111,7 +119,8 @@ extension IMPSYAudioUnit {
             return
         }
         do {
-            let config = try ModelInspector.inspect(modelURL: url)
+            let modelData = try Data(contentsOf: url)
+            let config = try ModelInspector.inspect(modelData: modelData)
             _currentModelConfig      = config
             _currentModelDisplayName = url.lastPathComponent
             // The bundled model is the 9-dimension MDRNN; give it the AiC
@@ -123,7 +132,9 @@ extension IMPSYAudioUnit {
             updated.resize(toModelDimension: config.dimension)
             _currentMappings = updated
             engine.updateMappings(updated)
-            engine.loadModel(url: url, config: config)
+            engine.loadModel(modelData: modelData,
+                             displayName: url.lastPathComponent,
+                             config: config)
             NSLog("[IMPSY] Loaded bundled model %@ (dim=%d layers=%d units=%d mixtures=%d)",
                   url.lastPathComponent, config.dimension, config.numLayers,
                   config.hiddenUnits, config.numMixtures)
@@ -234,10 +245,16 @@ extension IMPSYAudioUnit {
                 #endif
 
                 let accessing = url.startAccessingSecurityScopedResource()
-                let config = try ModelInspector.inspect(modelURL: url)
+                defer { if accessing { url.stopAccessingSecurityScopedResource() } }
+
+                // Read while the scope is held — the engine works from these
+                // bytes on its own queue and never re-opens the user's URL.
+                let modelData = try Data(contentsOf: url)
+                let config = try ModelInspector.inspect(modelData: modelData)
                 self?._currentModelConfig = config
-                self?.engine.loadModel(url: url, config: config)
-                if accessing { url.stopAccessingSecurityScopedResource() }
+                self?.engine.loadModel(modelData: modelData,
+                                       displayName: url.lastPathComponent,
+                                       config: config)
 
                 DispatchQueue.main.async {
                     NotificationCenter.default.post(name: .IMPSYModelStatusChanged,

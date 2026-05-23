@@ -40,6 +40,24 @@ enum ModelInspector {
         }
     }
 
+    /// Inspect a model directly from its bytes.
+    ///
+    /// Used when the source URL is security-scoped and the bytes have already
+    /// been read into memory (see `IMPSYAudioUnit.loadModel`). TFLite can only
+    /// open models by path, so we stage the bytes in the extension's temp
+    /// directory just long enough to inspect them.
+    static func inspect(modelData: Data) throws -> ModelConfig {
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("impsy-inspect-\(UUID().uuidString).tflite")
+        do {
+            try modelData.write(to: tempURL)
+        } catch {
+            throw InspectionError.failedToLoad(error.localizedDescription)
+        }
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+        return try inspect(modelURL: tempURL)
+    }
+
     static func inspect(modelURL: URL) throws -> ModelConfig {
 #if os(iOS)
         let interpreter: Interpreter

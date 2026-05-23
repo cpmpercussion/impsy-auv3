@@ -28,7 +28,9 @@ targets:
   IMPSYHost-iOS:
     type: application
     platform: iOS
-    scheme: {}
+    scheme:
+      testTargets:
+        - IMPSYUITests-iOS
     postBuildScripts:
       - script: |
           "$SRCROOT/scripts/patch_tflite_plists.sh"
@@ -206,7 +208,9 @@ targets:
     type: bundle.unit-test
     platform: macOS
     sources:
-      - Tests
+      - path: Tests
+        excludes:
+          - "Fixtures/**"
       - path: IMPSYExtension/Common
         excludes:
           # Exclude AU-specific files that need entitlements/framework
@@ -216,3 +220,24 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: au.charlesmartin.impsy.tests
         SWIFT_VERSION: "5.9"
         GENERATE_INFOPLIST_FILE: "YES"
+
+  # ── iOS UI Tests ──────────────────────────────────────────────────────────────
+  # Drives the iOS host in the simulator to verify the model-loading code path
+  # (issue #9 regression). Uses a base64 launch-env to inject a fixture model
+  # so we exercise `IMPSYAudioUnit.loadModel(url:)` without driving the
+  # document picker UI itself.
+  IMPSYUITests-iOS:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: TestsUI
+      - path: Tests/Fixtures
+        buildPhase: resources
+    dependencies:
+      - target: IMPSYHost-iOS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: au.charlesmartin.impsy.uitests
+        SWIFT_VERSION: "5.9"
+        GENERATE_INFOPLIST_FILE: "YES"
+        TEST_TARGET_NAME: IMPSYHost-iOS
