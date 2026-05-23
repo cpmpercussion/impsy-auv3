@@ -28,6 +28,23 @@ IOS_PKG_TAG="0.0.20250619"
 MAC_TFLITE_VERSION="2.17.1"
 MAC_DEPLOYMENT_TARGET="${MACOSX_DEPLOYMENT_TARGET:-14.0}"
 
+# Pinned SHA-256 of the upstream release assets. Update whenever IOS_PKG_TAG
+# or MAC_TFLITE_VERSION changes; mismatch aborts the build.
+IOS_ZIP_SHA256="242eb0cfc0bdf411c1e1a378c6a16b71a87923d6407c22780dd91f5e3379ceb5"
+MAC_TARBALL_SHA256="c183be044a6ad0c6976a6ddd2fafb9d723b03c46c9f06870ab9a55201d71c2d0"
+
+verify_sha256() {
+  local file="$1" expected="$2"
+  local actual
+  actual=$(shasum -a 256 "$file" | awk '{print $1}')
+  [[ "$actual" == "$expected" ]] || {
+    echo "FAILED: SHA-256 mismatch for $file"
+    echo "  expected: $expected"
+    echo "  actual:   $actual"
+    exit 1
+  }
+}
+
 WORK="$(mktemp -d -t impsy-tflite-build)"
 trap 'rm -rf "$WORK"' EXIT
 
@@ -37,6 +54,7 @@ echo "==> Workspace: $WORK"
 IOS_URL="https://github.com/kewlbear/TensorFlowLiteC/releases/download/${IOS_PKG_TAG}/TensorFlowLiteC.xcframework.zip"
 echo "==> Downloading iOS xcframework from kewlbear (${IOS_PKG_TAG})"
 curl -fsSL -o "$WORK/ios.zip" "$IOS_URL"
+verify_sha256 "$WORK/ios.zip" "$IOS_ZIP_SHA256"
 unzip -q "$WORK/ios.zip" -d "$WORK/ios"
 
 IOS_FW=$(find "$WORK/ios" -name TensorFlowLiteC.framework -path '*ios-arm64/*' ! -path '*simulator*' -maxdepth 4 | head -1)
@@ -50,6 +68,7 @@ echo "    simulator-slice: $IOS_SIM_FW"
 MAC_URL="https://github.com/tphakala/tflite_c/releases/download/v${MAC_TFLITE_VERSION}/tflite_c_v${MAC_TFLITE_VERSION}_darwin_arm64.tar.gz"
 echo "==> Downloading macOS arm64 dylib from tphakala (v${MAC_TFLITE_VERSION})"
 curl -fsSL -o "$WORK/mac.tar.gz" "$MAC_URL"
+verify_sha256 "$WORK/mac.tar.gz" "$MAC_TARBALL_SHA256"
 mkdir "$WORK/mac"
 tar -xzf "$WORK/mac.tar.gz" -C "$WORK/mac"
 MAC_DYLIB=$(find "$WORK/mac" -maxdepth 2 -name 'libtensorflowlite_c*.dylib' | head -1)
