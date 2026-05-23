@@ -1,5 +1,5 @@
 {
-  "originHash" : "52d55af30cc7ff64ab05b78929637b915598314a879bd4c40741c91d81a7b05a",
+  "originHash" : "ffb8fd36f68d5d8c5c1a06d16a43a0890a9dec6f7e0a4a225abb595268800cad",
   "pins" : [
     {
       "identity" : "tensorflowlitec",
@@ -17,6 +17,15 @@
       "state" : {
         "branch" : "master",
         "revision" : "bb9bd9c7c86e882f17aaf8bac35e96c77264eee2"
+      }
+    },
+    {
+      "identity" : "tomlkit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/LebJe/TOMLKit.git",
+      "state" : {
+        "revision" : "ec6198d37d495efc6acd4dffbd262cdca7ff9b3f",
+        "version" : "0.6.0"
       }
     }
   ],
