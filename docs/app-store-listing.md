@@ -38,7 +38,7 @@ A live duet between you and a neural network. Send MIDI from any keyboard, get b
 ```
 Jam with an AI MIDI partner.
 
-IMPSY listens to what you play and improvises musical responses in your DAW. Load it as an AUv3 MIDI Processor in AUM, Logic Pro, Ableton Live, Cubasis or GarageBand, send it MIDI from any keyboard or controller, and route its output to any instrument plug-in. The result is a live duet between you and a neural network trained on musical performances.
+IMPSY listens to what you play and improvises musical responses in your DAW. Load it as an AUv3 MIDI Processor in Logic Pro, MainStage, AUM, AudioBus or Cubasis, send it MIDI from any keyboard or controller, and route its output to any instrument plug-in. The result is a live duet between you and a neural network trained on musical performances.
 
 How it works
 
@@ -56,19 +56,19 @@ IMPSY ships with a default 9-dimensional model trained for general musical inter
 Compatibility
 
 • AUv3 MIDI Processor — no audio I/O
-• Tested with AUM, Logic Pro, Ableton Live, Cubasis, GarageBand
+• Developed and tested in Logic Pro; MainStage, AUM, AudioBus and Cubasis also host AUv3 MIDI Processor (aumi) plugins
 • Requires iOS 17 or macOS 14
 • MIDI stays on-device — no network, no telemetry
 
 Credits
 
-IMPSY is research software from Charles Patrick Martin (ANU School of Cybernetics). The underlying IMPSY framework is open source at github.com/cpmpercussion/impsy.
+IMPSY is research software from Charles Patrick Martin (ANU School of Computing). The underlying IMPSY framework is open source at github.com/cpmpercussion/impsy.
 ```
 
 ## Keywords (100-char limit, no spaces after commas)
 
 ```
-AUv3,MIDI,AI,neural,network,improvisation,generative,music,MDRNN,IMPSY,AUM,Logic,Ableton,plugin
+AUv3,MIDI,AI,neural,network,improvisation,generative,music,MDRNN,IMPSY,AUM,Logic,MainStage,plugin
 ```
 89 characters used.
 
