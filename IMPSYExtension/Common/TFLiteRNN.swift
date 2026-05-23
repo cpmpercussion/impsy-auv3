@@ -57,6 +57,10 @@ final class TFLiteRNN {
     private let interpreter: Interpreter
     let config: ModelConfig
 
+    /// Temp file backing the interpreter. TFLite mmaps the model, so the file
+    /// has to stay alive for the lifetime of this object.
+    private let tempModelURL: URL
+
     /// LSTM state storage: [layerIndex][h/c (0=h,1=c)][hiddenUnits]
     private var lstmStates: [[[Float]]]
 
@@ -70,18 +74,38 @@ final class TFLiteRNN {
 
     // MARK: Init
 
-    init(modelURL: URL, config: ModelConfig) throws {
+    /// Build an RNN from in-memory model bytes.
+    ///
+    /// The caller (`IMPSYAudioUnit.loadModel`) reads the bytes while the
+    /// source URL's security scope is held; from here on we work from a
+    /// sandboxed temp file so the engine never depends on the user's URL
+    /// still being accessible.
+    init(modelData: Data, config: ModelConfig) throws {
         self.config = config
         // Zero-initialise all LSTM states
         let zeroState = [Float](repeating: 0, count: config.hiddenUnits)
         self.lstmStates = (0..<config.numLayers).map { _ in [zeroState, zeroState] }
 
-        let options = Interpreter.Options()
-        self.interpreter = try Interpreter(modelPath: modelURL.path, options: options)
-        try interpreter.allocateTensors()
-        // Output tensor shapes are only valid after the graph has run once.
-        try warmUpInterpreter(interpreter)
-        try discoverTensorIndices()
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("impsy-rnn-\(UUID().uuidString).tflite")
+        try modelData.write(to: tempURL)
+        self.tempModelURL = tempURL
+
+        do {
+            let options = Interpreter.Options()
+            self.interpreter = try Interpreter(modelPath: tempURL.path, options: options)
+            try interpreter.allocateTensors()
+            // Output tensor shapes are only valid after the graph has run once.
+            try warmUpInterpreter(interpreter)
+            try discoverTensorIndices()
+        } catch {
+            try? FileManager.default.removeItem(at: tempURL)
+            throw error
+        }
+    }
+
+    deinit {
+        try? FileManager.default.removeItem(at: tempModelURL)
     }
 
     // MARK: Inference
@@ -267,7 +291,7 @@ final class TFLiteRNN {
 final class TFLiteRNN {
     let config: ModelConfig
 
-    init(modelURL: URL, config: ModelConfig) throws {
+    init(modelData: Data, config: ModelConfig) throws {
         self.config = config
         throw TFLiteRNNError.tensorNotFound("TFLite inference is not available on macOS")
     }

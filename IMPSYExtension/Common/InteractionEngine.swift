@@ -107,11 +107,16 @@ final class InteractionEngine: @unchecked Sendable {
 
     // MARK: - Model Loading (call from any thread; dispatches to inferenceQueue)
 
-    func loadModel(url: URL, config: ModelConfig) {
+    /// Swap in a new RNN built from in-memory model bytes.
+    ///
+    /// The caller is responsible for reading the bytes from a security-scoped
+    /// URL — by the time this runs on `inferenceQueue` the source URL may no
+    /// longer be accessible, so we never hold one across that boundary.
+    func loadModel(modelData: Data, displayName: String, config: ModelConfig) {
         inferenceQueue.async { [weak self] in
             guard let self else { return }
             do {
-                let newRNN = try TFLiteRNN(modelURL: url, config: config)
+                let newRNN = try TFLiteRNN(modelData: modelData, config: config)
                 self.rnn = newRNN
                 // Match the IMPSY Python reference (impsy/interaction.py): seed the
                 // first interaction with a random sample so response mode primes from
@@ -124,7 +129,7 @@ final class InteractionEngine: @unchecked Sendable {
                 self.responseGeneration &+= 1
                 self.callResponseState = .call
                 self.lastUserInputTime = ProcessInfo.processInfo.systemUptime
-                NSLog("[IMPSY] InteractionEngine: RNN ready for %@", url.lastPathComponent)
+                NSLog("[IMPSY] InteractionEngine: RNN ready for %@", displayName)
             } catch {
                 NSLog("[IMPSY] InteractionEngine: failed to load model: %@",
                       String(describing: error))

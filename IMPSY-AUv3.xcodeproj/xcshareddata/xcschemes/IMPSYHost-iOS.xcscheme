@@ -39,6 +39,17 @@
          </BuildableReference>
       </MacroExpansion>
       <Testables>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "904B3B96A884225E812ADBEC"
+               BuildableName = "IMPSYUITests-iOS.xctest"
+               BlueprintName = "IMPSYUITests-iOS"
+               ReferencedContainer = "container:IMPSY-AUv3.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
       <CommandLineArguments>
       </CommandLineArguments>
