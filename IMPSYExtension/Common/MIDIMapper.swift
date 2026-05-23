@@ -42,6 +42,16 @@ struct MIDIMapper {
 
     var mappings: MIDIMappingSet
 
+    // Last note_on number emitted per output channel (0–15). Used to insert a
+    // note_off for the previous note before each new note_on so each channel
+    // behaves monophonically — matching IMPSY's reference impsio behaviour
+    // (../impsy/impsy/impsio.py: note_off-before-note_on per channel).
+    private var lastNotes: [UInt8: UInt8] = [:]
+
+    init(mappings: MIDIMappingSet) {
+        self.mappings = mappings
+    }
+
     // MARK: Decode (MIDI → normalised value)
 
     /// Given raw MIDI bytes, returns `(dimensionIndex, normalizedValue)` if the message
@@ -79,7 +89,11 @@ struct MIDIMapper {
 
     /// Given a model output vector (index 0 = dim 1), produce MIDI events for each dimension.
     /// `values` is 0-based: values[0] → dimension 1, values[1] → dimension 2, etc.
-    func encodeOutput(values: [Float]) -> [MIDIEvent] {
+    ///
+    /// For note_on outputs, a note_off for the previously emitted note on the
+    /// same channel is inserted before the new note_on, keeping each channel
+    /// monophonic.
+    mutating func encodeOutput(values: [Float]) -> [MIDIEvent] {
         var events: [MIDIEvent] = []
         for (i, mapping) in mappings.outputMappings.enumerated() {
             guard i < values.count else { break }
@@ -89,7 +103,11 @@ struct MIDIMapper {
             switch mapping.messageType {
             case .noteOn:
                 let note = UInt8(clamping: Int(v * 127.0 + 0.5))
+                if let previous = lastNotes[ch] {
+                    events.append(MIDIEvent(0x80 | ch, previous, 0))
+                }
                 events.append(MIDIEvent(0x90 | ch, note, 64))
+                lastNotes[ch] = note
             case .controlChange:
                 let ccVal = UInt8(clamping: mapping.denormalize(toCCValue: v))
                 events.append(MIDIEvent(0xB0 | ch, UInt8(mapping.number & 0x7F), ccVal))
@@ -101,6 +119,17 @@ struct MIDIMapper {
             }
         }
         return events
+    }
+
+    /// Emit a note_off for every channel that currently has an outstanding
+    /// note_on, then forget them. Call at mode/model transitions so that the
+    /// last RNN-emitted note does not hang on the receiving synth.
+    mutating func releaseAllNotes() -> [MIDIEvent] {
+        let offs = lastNotes.map { ch, note in
+            MIDIEvent(0x80 | ch, note, 0)
+        }
+        lastNotes.removeAll()
+        return offs
     }
 
     // MARK: Single-mapping encode (used for UI-driven direct input)
