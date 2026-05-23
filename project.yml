@@ -21,6 +21,9 @@ packages:
   TensorFlowLiteSwift:
     url: https://github.com/kewlbear/TensorFlowLiteSwift.git
     branch: master
+  TOMLKit:
+    url: https://github.com/LebJe/TOMLKit.git
+    from: "0.6.0"
 
 targets:
 
@@ -56,6 +59,7 @@ targets:
         embed: true
         codeSign: true
       - package: TensorFlowLiteSwift
+      - package: TOMLKit
       - sdk: CoreML.framework
     settings:
       base:
@@ -114,6 +118,7 @@ targets:
       - target: IMPSYExtension-macOS
         embed: true
         codeSign: true
+      - package: TOMLKit
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: au.charlesmartin.impsy
@@ -160,6 +165,7 @@ targets:
       - IMPSYHost/Assets.xcassets
     dependencies:
       - package: TensorFlowLiteSwift
+      - package: TOMLKit
       - sdk: CoreML.framework
     settings:
       base:
@@ -189,6 +195,8 @@ targets:
       - path: Resources
         buildPhase: resources
         excludes: ["AppIcon"]
+    dependencies:
+      - package: TOMLKit
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: au.charlesmartin.impsy.IMPSYExtension
@@ -211,10 +219,19 @@ targets:
       - path: Tests
         excludes:
           - "Fixtures/**"
+      # TOML fixtures are bundled as resources so IMPSYConfigTests can read
+      # them via `Bundle(for:).url(forResource:)`. .tflite fixtures stay
+      # excluded — the macOS test target can't run TFLite anyway.
+      - path: Tests/Fixtures
+        buildPhase: resources
+        includes:
+          - "*.toml"
       - path: IMPSYExtension/Common
         excludes:
           # Exclude AU-specific files that need entitlements/framework
           - "IMPSYAudioUnit*.swift"
+    dependencies:
+      - package: TOMLKit
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: au.charlesmartin.impsy.tests

@@ -1,0 +1,51 @@
+# The configuration file for the GenAI-MIDI-module
+
+# Metadata about this configuration
+title = "RPi U6MIDI Pro: nanoKontrol Studio to notes and CCs"
+owner = "Charles Martin"
+description = "Uses nanoKontrol panning inputs and outputs to CCs for controlling a DAW"
+
+# Basic config
+log_input = true
+log_predictions = false
+verbose = true
+
+# Interaction Configuration
+[interaction]
+mode = "callresponse" # Can be: "callresponse", "polyphony", "battle", "useronly"
+threshold = 0.1 # number of seconds before switching in call-response mode
+input_thru = true # sends inputs directly to outputs (e.g., if input interface is different than output synth)
+
+# Model configuration
+[model]
+dimension = 9
+file = "models/musicMDRNN-dim9-layers2-units64-mixtures5-scale10.tflite"
+size = "s" # Can be one of: xs, s, m, l, xl
+sigmatemp = 0.01
+pitemp = 1
+timescale = 1
+
+# MIDI Mapping
+[midi]
+in_device = ["U2MIDI Pro"]
+out_device = ["U2MIDI Pro"]
+input."U2MIDI Pro" = [ # nanoKONTROL Studio knobs
+  ["control_change", 1, 13], # nanoKONTROL Studio knob controller 1
+  ["control_change", 1, 14], # nanoKONTROL Studio knob controller 2
+  ["control_change", 1, 15], # nanoKONTROL Studio knob controller 3
+  ["control_change", 1, 16], # nanoKONTROL Studio knob controller 4
+  ["control_change", 1, 17], # nanoKONTROL Studio knob controller 5
+  ["control_change", 1, 18], # nanoKONTROL Studio knob controller 6
+  ["control_change", 1, 19], # nanoKONTROL Studio knob controller 7
+  ["control_change", 1, 20], # nanoKONTROL Studio knob controller 8
+]
+output."U2MIDI Pro" = [ # Collection of Useful Mappings
+  ["note_on", 1], # note
+  ["control_change", 11, 1], # 
+  ["note_on", 2], # note
+  ["control_change", 11, 2], # 
+  ["note_on", 3], # note
+  ["control_change", 11, 3], # 
+  ["note_on", 4], # note
+  ["control_change", 11, 4], # 
+]

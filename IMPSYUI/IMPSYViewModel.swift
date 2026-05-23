@@ -254,6 +254,30 @@ final class IMPSYViewModel: ObservableObject {
         audioUnit?.currentMappings = mappings
     }
 
+    /// Apply an IMPSY TOML config file. Reads the TOML, pushes parameters
+    /// and mappings into the AU, and then re-pulls live state so the
+    /// `@Published` mirrors that drive the UI stay in sync.
+    func loadConfig(url: URL) throws {
+        guard let au = audioUnit else { return }
+        try au.loadConfig(url: url)
+        // Re-sync from the AU: parameter observer fires for the four AU
+        // parameters but `currentMappings` and `inputThru`'s @Published
+        // bool need a direct pull.
+        mappings  = au.currentMappings
+        if let tree = au.parameterTree {
+            threshold = tree.parameter(withAddress: ParameterAddress.threshold.rawValue)?.value ?? threshold
+            sigmaTemp = tree.parameter(withAddress: ParameterAddress.sigmaTemp.rawValue)?.value ?? sigmaTemp
+            piTemp    = tree.parameter(withAddress: ParameterAddress.piTemp.rawValue)?.value    ?? piTemp
+            timescale = tree.parameter(withAddress: ParameterAddress.timescale.rawValue)?.value ?? timescale
+            inputThru = (tree.parameter(withAddress: ParameterAddress.inputThru.rawValue)?.value ?? ParameterDefaults.inputThru) > 0.5
+        }
+    }
+
+    /// Write the current AU state out as an IMPSY TOML config.
+    func exportConfig(to url: URL) throws {
+        try audioUnit?.writeConfig(to: url)
+    }
+
     func resetLSTM() {
         audioUnit?.engine.resetLSTMStates()
     }
