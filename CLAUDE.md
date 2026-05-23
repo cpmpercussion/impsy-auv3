@@ -186,3 +186,16 @@ The script is also run by `ci_scripts/ci_post_clone.sh` so Xcode Cloud builds pi
 
 **Load a model for testing:**
 Copy any `.tflite` from `../impsy/models/` to a location accessible via Files app, then use the Load Model button in the plugin UI.
+
+**Refresh the macOS AU registration:**
+```bash
+./scripts/refresh-au-registration.sh          # auto: /Applications if present, else latest Debug
+./scripts/refresh-au-registration.sh debug    # force the local Debug build
+./scripts/refresh-au-registration.sh --dry-run
+```
+LaunchServices clings to stale extension paths from Xcode archives and old DerivedData builds. PluginKit may dispatch to a deleted path, and the host (Logic / Ableton / `auval`) gets `OpenAComponent -10810` ("Failed to load Audio Unit 'IMPSY'"). `lsregister -kill -r` does not clean these — explicit per-path `lsregister -u` does, which is what this script automates. Symptom in `log show`: `PlugInKit ... must have pid! Extension request will fail`.
+
+## Known issues
+
+**`auval` warns/fails on Class Data: `<type> == componentType`.**
+`kAudioUnitProperty_ClassInfo` returns a dict that is missing the required `componentType`, `componentSubType`, `componentManufacturer`, `version`, `data` keys — see `IMPSYAudioUnit+State.swift` (the `fullState` implementation). Logic still loads the plugin, but `auval -v aumi impy 'CpM!'` finishes with `AU VALIDATION FAILED`, and Logic's Plug-in Manager may flag the plugin as "Failed Validation". Follow-up: have `fullState` getter include the four AU component descriptor keys around the existing key/value blob.
