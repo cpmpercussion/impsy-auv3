@@ -69,6 +69,10 @@ final class IMPSYViewModel: ObservableObject {
     @Published var timescale: Float = ParameterDefaults.timescale
     @Published var inputThru: Bool  = ParameterDefaults.inputThru > 0.5
 
+    // Session logging
+    @Published var loggingEnabled: Bool = false
+    @Published var logFolderPath: String? = nil
+
     // MARK: - Audio Unit reference
 
     weak var audioUnit: IMPSYAudioUnit? {
@@ -130,6 +134,10 @@ final class IMPSYViewModel: ObservableObject {
         // Sync the current call/response state (the engine may already be running)
         callResponseState = au.engine.callResponseState.rawValue
 
+        // Sync logging state
+        loggingEnabled = au.loggingEnabled
+        logFolderPath  = au.logFolderDisplayPath
+
         // Listen for model status changes
         let modelToken = NotificationCenter.default.addObserver(
             forName: .IMPSYModelStatusChanged,
@@ -185,7 +193,16 @@ final class IMPSYViewModel: ObservableObject {
             }
         }
 
-        notificationTokens = [modelToken, stateToken, eventToken, inputToken]
+        // Listen for log-folder changes (so picking a folder reflects in UI)
+        let logFolderToken = NotificationCenter.default.addObserver(
+            forName: .IMPSYLogFolderChanged,
+            object: au,
+            queue: .main
+        ) { [weak self] note in
+            self?.logFolderPath = note.userInfo?["path"] as? String
+        }
+
+        notificationTokens = [modelToken, stateToken, eventToken, inputToken, logFolderToken]
     }
 
     private func handleModelStatusNotification(_ note: Notification) {
@@ -280,6 +297,22 @@ final class IMPSYViewModel: ObservableObject {
 
     func resetLSTM() {
         audioUnit?.engine.resetLSTMStates()
+    }
+
+    // MARK: - Session Logging
+
+    /// Apply a user-picked folder URL as the destination for `.log` files.
+    func setLogFolder(url: URL) {
+        audioUnit?.setLogFolder(url: url)
+        logFolderPath = url.path
+    }
+
+    /// Toggle logging on/off. Without a folder selected this still flips the
+    /// flag (so a freshly-picked folder starts logging immediately) but no
+    /// file is opened until both a folder and a model are present.
+    func setLoggingEnabled(_ enabled: Bool) {
+        audioUnit?.loggingEnabled = enabled
+        loggingEnabled = enabled
     }
 
     /// Inject a normalised value (0…1) for a user input dimension as if the

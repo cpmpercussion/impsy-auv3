@@ -26,6 +26,11 @@ struct SettingsView: View {
                 ConfigPickerControls(viewModel: viewModel)
             }
 
+            VStack(alignment: .leading, spacing: 4) {
+                sectionLabel("Logging")
+                LoggingControlsView(viewModel: viewModel)
+            }
+
             Spacer(minLength: 0)
         }
     }

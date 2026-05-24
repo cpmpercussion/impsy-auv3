@@ -147,7 +147,7 @@ targets:
       path: IMPSYHost/macOS/IMPSYHost_macOS.entitlements
       properties:
         com.apple.security.app-sandbox: true
-        com.apple.security.files.user-selected.read-only: true
+        com.apple.security.files.user-selected.read-write: true
         com.apple.security.temporary-exception.audio-unit-host: true
 
   # ── iOS AUv3 Extension ────────────────────────────────────────────────────────
@@ -187,7 +187,7 @@ targets:
     entitlements:
       path: IMPSYExtension/iOS/IMPSYExtension_iOS.entitlements
       properties:
-        com.apple.security.files.user-selected.read-only: true
+        com.apple.security.files.user-selected.read-write: true
 
   # ── macOS AUv3 Extension ──────────────────────────────────────────────────────
   IMPSYExtension-macOS:
@@ -217,7 +217,7 @@ targets:
       path: IMPSYExtension/macOS/IMPSYExtension_macOS.entitlements
       properties:
         com.apple.security.app-sandbox: true
-        com.apple.security.files.user-selected.read-only: true
+        com.apple.security.files.user-selected.read-write: true
 
   # ── Unit Tests ────────────────────────────────────────────────────────────────
   IMPSYTests:
