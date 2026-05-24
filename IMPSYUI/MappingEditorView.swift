@@ -23,40 +23,60 @@ struct MappingEditorView: View {
             let isInput  = selectedTab == .input
             let mappings = isInput ? viewModel.mappings.inputMappings
                                    : viewModel.mappings.outputMappings
+            // Per-dim activity counts the engine increments on every mapped
+            // event. Used to flash the dim badge so users can see at a glance
+            // which inputs are receiving signal and which outputs the model is
+            // hitting (especially useful when mappings.count > model.dim, since
+            // rows past the model dim never flash).
+            let counts = isInput ? viewModel.inputDimensionCounts
+                                 : viewModel.outputDimensionCounts
+            let accent: Color = isInput ? .red : .green
 
-            if mappings.isEmpty {
-                Text("No model loaded")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.vertical, 24)
-            } else {
-                // Master "all on / all off" toggle. Tri-state: if any row is
-                // disabled, ticking it re-enables everything; if all rows are
-                // already on, ticking sets them all off. The use case (issue
-                // #24) is MIDI-learn in a host like Ableton — disable every
-                // dim, enable just the one you want to teach, then turn
-                // everything back on with one tap.
+            // Master "all on / all off" toggle. Tri-state: if any row is
+            // disabled, ticking it re-enables everything; if all rows are
+            // already on, ticking sets them all off. The use case (issue
+            // #24) is MIDI-learn in a host like Ableton — disable every
+            // dim, enable just the one you want to teach, then turn
+            // everything back on with one tap.
+            if !mappings.isEmpty {
                 MasterEnableToggle(
                     allEnabled: allEnabled(isInput: isInput),
                     setAll: { on in setAllEnabled(on, isInput: isInput) }
                 )
                 .accessibilityIdentifier("mapping.all.\(isInput ? "input" : "output")")
+            }
 
-                // No inner ScrollView: the parent view already scrolls, and
-                // nesting vertical scroll views fights for the drag gesture.
-                VStack(spacing: 6) {
-                    ForEach(mappings.indices, id: \.self) { idx in
-                        MappingRow(
-                            dimensionIndex: idx + 1,
-                            mapping: binding(at: idx, isInput: isInput)
-                        )
-                        if idx < mappings.count - 1 {
-                            Divider().opacity(0.4)
-                        }
+            // No inner ScrollView: the parent view already scrolls, and
+            // nesting vertical scroll views fights for the drag gesture.
+            VStack(spacing: 6) {
+                ForEach(mappings.indices, id: \.self) { idx in
+                    MappingRow(
+                        dimensionIndex: idx + 1,
+                        isFirst: idx == 0,
+                        isLast: idx == mappings.count - 1,
+                        activityTrigger: counts.indices.contains(idx) ? counts[idx] : 0,
+                        accentColor: accent,
+                        mapping: binding(at: idx, isInput: isInput),
+                        onMoveUp:   { viewModel.moveMapping(isInput: isInput, from: idx, to: idx - 1) },
+                        onMoveDown: { viewModel.moveMapping(isInput: isInput, from: idx, to: idx + 1) },
+                        onDelete:   { viewModel.removeMapping(isInput: isInput, at: idx) }
+                    )
+                    if idx < mappings.count - 1 {
+                        Divider().opacity(0.4)
                     }
                 }
             }
+
+            Button {
+                viewModel.addMapping(isInput: isInput)
+            } label: {
+                Label("Add Dimension", systemImage: "plus.circle")
+                    .font(.caption)
+            }
+            .buttonStyle(.borderless)
+            .foregroundStyle(Color.accentColor)
+            .padding(.top, 4)
+            .accessibilityIdentifier("mapping.add.\(isInput ? "input" : "output")")
         }
         .padding(10)
         .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.04)))
@@ -107,11 +127,55 @@ struct MappingEditorView: View {
     }
 }
 
+// MARK: - Dimension Badge
+
+/// The dim-number pill in each mapping row. Holds an LED-style flash that
+/// mirrors the dashboard's per-dim activity indicators — same timing
+/// (40 ms hold, 250 ms fade) so the two surfaces feel like the same instrument.
+private struct DimensionBadge: View {
+    let dimensionIndex: Int
+    let enabled: Bool
+    let trigger: Int
+    let accent: Color
+    @State private var lit = false
+
+    var body: some View {
+        Text("\(dimensionIndex)")
+            .font(.system(.caption, design: .monospaced, weight: .semibold))
+            .foregroundStyle(lit ? Color.white : Color.primary)
+            .frame(width: 22, height: 22)
+            .background(
+                Circle().fill(lit ? accent : Color.primary.opacity(0.08))
+            )
+            .overlay(
+                Circle().strokeBorder(accent.opacity(lit ? 0.7 : 0), lineWidth: 0.6)
+            )
+            .shadow(color: lit ? accent : .clear, radius: lit ? 4 : 0)
+            .opacity(enabled ? 1 : 0.4)
+            .onChange(of: trigger) { _, _ in flash() }
+            .accessibilityHidden(true)
+    }
+
+    private func flash() {
+        lit = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.04) {
+            withAnimation(.easeOut(duration: 0.25)) { lit = false }
+        }
+    }
+}
+
 // MARK: - Single Mapping Row
 
 private struct MappingRow: View {
     let dimensionIndex: Int
+    let isFirst: Bool
+    let isLast: Bool
+    let activityTrigger: Int
+    let accentColor: Color
     @Binding var mapping: DimensionMapping
+    let onMoveUp: () -> Void
+    let onMoveDown: () -> Void
+    let onDelete: () -> Void
 
     var body: some View {
         HStack(spacing: 8) {
@@ -122,12 +186,12 @@ private struct MappingRow: View {
             EnableCheckbox(isOn: $mapping.enabled)
                 .accessibilityIdentifier("mapping.row.\(dimensionIndex).enabled")
 
-            // Dimension badge
-            Text("\(dimensionIndex)")
-                .font(.system(.caption, design: .monospaced, weight: .semibold))
-                .frame(width: 22, height: 22)
-                .background(Circle().fill(Color.primary.opacity(0.08)))
-                .opacity(mapping.enabled ? 1 : 0.4)
+            // Dimension badge — pulses with the same LED feel as the dashboard
+            // activity indicators on each MIDI event for this dim.
+            DimensionBadge(dimensionIndex: dimensionIndex,
+                           enabled: mapping.enabled,
+                           trigger: activityTrigger,
+                           accent: accentColor)
 
             // Message type. A Menu with a custom label (rather than a .menu
             // Picker) is used because Picker ignores .font / .lineLimit on its
@@ -150,6 +214,10 @@ private struct MappingRow: View {
                 .foregroundStyle(Color.accentColor)
                 .frame(width: 86, alignment: .leading)
             }
+            // Suppress SwiftUI's built-in disclosure chevron — on macOS it
+            // renders on top of our manually-drawn `chevron.up.chevron.down`,
+            // producing two arrows on the same control.
+            .menuIndicator(.hidden)
 
             Spacer(minLength: 0)
 
@@ -158,7 +226,56 @@ private struct MappingRow: View {
             CompactStepper(label: "Ch", value: $mapping.channel, range: 1...16)
             CompactStepper(label: nil, value: $mapping.number,
                            range: 0...127, enabled: mapping.messageType.usesNumber)
+
+            // Row-level actions (reorder / delete). Tucked into a kebab menu so
+            // the row stays readable on phone widths; reorder is functional —
+            // moving a row up/down swaps which model dim that MIDI mapping
+            // applies to (array index = model dim).
+            RowActionMenu(isFirst: isFirst, isLast: isLast,
+                          onMoveUp: onMoveUp,
+                          onMoveDown: onMoveDown,
+                          onDelete: onDelete)
+                .accessibilityIdentifier("mapping.row.\(dimensionIndex).actions")
         }
+    }
+}
+
+// MARK: - Row Action Menu
+
+private struct RowActionMenu: View {
+    let isFirst: Bool
+    let isLast: Bool
+    let onMoveUp: () -> Void
+    let onMoveDown: () -> Void
+    let onDelete: () -> Void
+
+    var body: some View {
+        Menu {
+            Button(action: onMoveUp) {
+                Label("Move Up", systemImage: "arrow.up")
+            }
+            .disabled(isFirst)
+
+            Button(action: onMoveDown) {
+                Label("Move Down", systemImage: "arrow.down")
+            }
+            .disabled(isLast)
+
+            Divider()
+
+            Button(role: .destructive, action: onDelete) {
+                Label("Delete Dimension", systemImage: "trash")
+            }
+        } label: {
+            Image(systemName: "ellipsis.circle")
+                .font(.system(size: 16, weight: .regular))
+                .foregroundStyle(.secondary)
+                .frame(width: 28, height: 28)
+                .contentShape(Rectangle())
+        }
+        .menuIndicator(.hidden)
+        .menuStyle(.borderlessButton)
+        .fixedSize()
     }
 }
 

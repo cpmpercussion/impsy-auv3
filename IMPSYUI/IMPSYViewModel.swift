@@ -222,9 +222,10 @@ final class IMPSYViewModel: ObservableObject {
             if let config = info["config"] as? ModelConfig {
                 modelStatus = .ready(config)
                 modelName   = (info["name"] as? String) ?? modelName
-                var updated = mappings
-                updated.resize(toModelDimension: config.dimension)
-                mappings = updated
+                // Mapping count is decoupled from model dim — leave the user's
+                // configured mappings alone. Dims past mappings.count behave as
+                // disabled; mappings past model dim are ignored.
+                if let au = audioUnit { mappings = au.currentMappings }
                 resizeDimensionCounts(toModelDimension: config.dimension)
             }
         case "error":
@@ -279,6 +280,25 @@ final class IMPSYViewModel: ObservableObject {
 
     func saveMappings() {
         audioUnit?.currentMappings = mappings
+    }
+
+    // MARK: - Mapping list editing
+
+    func addMapping(isInput: Bool) {
+        if isInput { mappings.addInputMapping() } else { mappings.addOutputMapping() }
+        saveMappings()
+    }
+
+    func removeMapping(isInput: Bool, at index: Int) {
+        if isInput { mappings.removeInputMapping(at: index) }
+        else       { mappings.removeOutputMapping(at: index) }
+        saveMappings()
+    }
+
+    func moveMapping(isInput: Bool, from src: Int, to dst: Int) {
+        if isInput { mappings.moveInputMapping(from: src, to: dst) }
+        else       { mappings.moveOutputMapping(from: src, to: dst) }
+        saveMappings()
     }
 
     /// Apply an IMPSY TOML config file. Reads the TOML, pushes parameters

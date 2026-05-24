@@ -154,11 +154,9 @@ struct DashboardView: View {
     private var lastEventCard: some View {
         VStack(alignment: .leading, spacing: 4) {
             sectionLabel("Last Output")
-            HStack(spacing: 0) {
+            HStack(spacing: 12) {
                 metric("Events", "\(viewModel.generatedEventCount)")
-                Divider().frame(height: 30)
                 metric("Δt", String(format: "%.3f s", viewModel.lastEventDt))
-                Divider().frame(height: 30)
                 metric("MIDI", viewModel.lastEventSummary)
             }
             .padding(10)

@@ -167,11 +167,10 @@ extension IMPSYAudioUnit {
             _currentModelDisplayName  = url.lastPathComponent
             _modelBookmarkData        = bookmark
 
-            // Resize mappings to match new dimension
-            var updated = _currentMappings
-            updated.resize(toModelDimension: config.dimension)
-            _currentMappings = updated
-            engine.updateMappings(updated)
+            // Mapping count is decoupled from model dim: leave the existing
+            // mappings alone. Excess rows beyond model dim are ignored; missing
+            // rows behave as if disabled.
+            engine.updateMappings(_currentMappings)
 
             engine.loadModel(modelData: modelData,
                              displayName: url.lastPathComponent,
@@ -189,7 +188,7 @@ extension IMPSYAudioUnit {
 
     // MARK: - Bundled Default Model
 
-    static let defaultModelName = "musicMDRNN-dim9-layers2-units64-mixtures5-scale10"
+    static let defaultModelName = "default-dim9"
 
     /// Loads the bundled default 9D model from the extension's resource bundle.
     func loadBundledDefaultModel() {
@@ -208,12 +207,12 @@ extension IMPSYAudioUnit {
             _currentModelConfig      = config
             _currentModelDisplayName = url.lastPathComponent
             // The bundled model is the 9-dimension MDRNN; give it the AiC
-            // U6MIDI Pro mapping by default. Other dimensions fall back to
-            // generic per-dimension defaults.
-            var updated = config.dimension == 9
+            // U6MIDI Pro mapping by default. For any other dimension, keep
+            // whatever mappings are already configured (they may be empty;
+            // the user can add rows manually).
+            let updated = config.dimension == 9
                 ? MIDIMappingSet.aicU6MIDIProDefault()
                 : _currentMappings
-            updated.resize(toModelDimension: config.dimension)
             _currentMappings = updated
             engine.updateMappings(updated)
             engine.loadModel(modelData: modelData,

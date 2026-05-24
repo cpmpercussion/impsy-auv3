@@ -169,4 +169,58 @@ struct MIDIMappingSet: Codable, Equatable {
         if inputMappings.count > count  { inputMappings  = Array(inputMappings.prefix(count)) }
         if outputMappings.count > count { outputMappings = Array(outputMappings.prefix(count)) }
     }
+
+    // MARK: - Add / remove / move
+    //
+    // The mapping count is decoupled from model dimension: arrays larger than
+    // the model dim have their tail mappings ignored, and arrays smaller than
+    // the model dim behave as if the missing dims are disabled. Each `id` is
+    // kept in lock-step with array position (1-based) so `MIDIMapper`'s
+    // existing decode (which returns `mapping.id`) reflects the current dim.
+
+    mutating func addInputMapping() {
+        inputMappings.append(.defaults(forDimension: inputMappings.count + 1))
+    }
+
+    mutating func addOutputMapping() {
+        outputMappings.append(.defaults(forDimension: outputMappings.count + 1))
+    }
+
+    mutating func removeInputMapping(at index: Int) {
+        guard inputMappings.indices.contains(index) else { return }
+        inputMappings.remove(at: index)
+        renumberInputs()
+    }
+
+    mutating func removeOutputMapping(at index: Int) {
+        guard outputMappings.indices.contains(index) else { return }
+        outputMappings.remove(at: index)
+        renumberOutputs()
+    }
+
+    mutating func moveInputMapping(from src: Int, to dst: Int) {
+        guard inputMappings.indices.contains(src),
+              inputMappings.indices.contains(dst),
+              src != dst else { return }
+        let m = inputMappings.remove(at: src)
+        inputMappings.insert(m, at: dst)
+        renumberInputs()
+    }
+
+    mutating func moveOutputMapping(from src: Int, to dst: Int) {
+        guard outputMappings.indices.contains(src),
+              outputMappings.indices.contains(dst),
+              src != dst else { return }
+        let m = outputMappings.remove(at: src)
+        outputMappings.insert(m, at: dst)
+        renumberOutputs()
+    }
+
+    private mutating func renumberInputs() {
+        for i in inputMappings.indices { inputMappings[i].id = i + 1 }
+    }
+
+    private mutating func renumberOutputs() {
+        for i in outputMappings.indices { outputMappings[i].id = i + 1 }
+    }
 }

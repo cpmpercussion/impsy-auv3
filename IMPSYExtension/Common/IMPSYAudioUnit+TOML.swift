@@ -55,16 +55,12 @@ extension IMPSYAudioUnit {
         }
 
         // Replace the mappings wholesale. `currentMappings`'s setter syncs to
-        // the engine on its own queue.
-        var newMappings = MIDIMappingSet(
+        // the engine on its own queue. Mapping count is decoupled from the
+        // model dimension — the TOML's row count is honoured as-is.
+        let newMappings = MIDIMappingSet(
             inputMappings: config.inputMappings,
             outputMappings: config.outputMappings
         )
-        // If the model is loaded, resize to its dimension so we never produce
-        // more or fewer mapping rows than the engine expects.
-        if let dim = currentModelConfig?.dimension {
-            newMappings.resize(toModelDimension: dim)
-        }
         currentMappings = newMappings
     }
 

@@ -18,15 +18,26 @@ final class HostWindowController: NSWindowController {
     private var audioUnit: IMPSYAudioUnit?
     private var midiBridge: CoreMIDIBridge?
     private let bridgeStatusLabel = NSTextField(labelWithString: "")
+    // Strong reference: when we set `window.contentView` directly (instead of
+    // `contentViewController`), the window does not retain the VC and its
+    // SwiftUI view model would be deallocated mid-init.
+    private var auViewController: NSViewController?
 
     convenience init() {
+        // Default size fits the bundled 9D model's Dashboard and 8-row mapping
+        // list without scrolling. The window is resizable so users with
+        // smaller (or much larger) models can adapt — min/max are set on the
+        // NSWindow rather than via a SwiftUI .frame() modifier, since the
+        // SwiftUI route propagates through NSHostingController and pins the
+        // content size, breaking interactive resize.
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 420, height: 600),
+            contentRect: NSRect(x: 0, y: 0, width: 440, height: 680),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
         )
-        window.title = "IMPSY AUv3"
+        window.title = "IMPSY"
+        window.contentMinSize = NSSize(width: 380, height: 360)
         window.center()
         self.init(window: window)
         loadAudioUnit()
@@ -58,7 +69,22 @@ final class HostWindowController: NSWindowController {
 
             let vc = IMPSYViewController()
             vc.audioUnit = au
-            window?.contentViewController = makeContentView(auViewController: vc)
+            auViewController = vc
+            // Set the window's contentView directly rather than via
+            // `contentViewController`. The VC route auto-binds the window's
+            // content min/max to the VC's `preferredContentSize`, which —
+            // combined with NSHostingController's own size propagation — pins
+            // the window and prevents interactive resize. Going through
+            // `contentView` keeps sizing entirely under our control.
+            window?.contentView = makeContentView(auView: vc.view)
+            if let w = window {
+                w.contentMinSize = NSSize(width: 380, height: 360)
+                // 660pt for the SwiftUI surface + 20pt for the bottom MIDI
+                // bridge status label (sits inside the content area, not the
+                // title bar).
+                w.setContentSize(NSSize(width: 440, height: 680))
+                w.center()
+            }
             HostTestHooks.apply(to: au)
         } catch {
             window?.title = "IMPSY — Init error: \(error.localizedDescription)"
@@ -92,17 +118,10 @@ final class HostWindowController: NSWindowController {
     }
 
     /// Compose the AU's view with a bottom status strip showing bridge state.
-    /// `addChild` is what keeps the AU view controller (and its view model)
-    /// alive — without it the VC is released when `loadAudioUnit` returns and
-    /// the viewModel.audioUnit binding (set on the main queue, post-dealloc)
-    /// silently no-ops, leaving model loads stuck on "Loading...".
-    private func makeContentView(auViewController: NSViewController) -> NSViewController {
-        let container = NSViewController()
+    /// The caller is responsible for keeping the AU view controller alive —
+    /// see `auViewController` on `HostWindowController`.
+    private func makeContentView(auView: NSView) -> NSView {
         let root = NSView()
-        container.view = root
-        container.addChild(auViewController)
-
-        let auView = auViewController.view
         auView.translatesAutoresizingMaskIntoConstraints = false
         bridgeStatusLabel.translatesAutoresizingMaskIntoConstraints = false
         bridgeStatusLabel.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
@@ -123,7 +142,7 @@ final class HostWindowController: NSWindowController {
             bridgeStatusLabel.trailingAnchor.constraint(equalTo: root.trailingAnchor, constant: -12),
             bridgeStatusLabel.bottomAnchor.constraint(equalTo: root.bottomAnchor, constant: -6),
         ])
-        return container
+        return root
     }
 }
 

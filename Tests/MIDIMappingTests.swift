@@ -442,6 +442,107 @@ final class MIDIMappingTests: XCTestCase {
         XCTAssertTrue(events.isEmpty)
     }
 
+    // MARK: - Add / remove / move (decoupled from model dim)
+
+    func testAddInputMappingAppendsAndAssignsId() {
+        var mappings = MIDIMappingSet(inputMappings: [], outputMappings: [])
+        mappings.addInputMapping()
+        mappings.addInputMapping()
+        mappings.addInputMapping()
+        XCTAssertEqual(mappings.inputMappings.count, 3)
+        XCTAssertEqual(mappings.inputMappings.map(\.id), [1, 2, 3])
+    }
+
+    func testRemoveInputMappingRenumbersIds() {
+        var mappings = MIDIMappingSet.defaults(forModelDimension: 5)
+        // Mark each by setting a unique CC number so we can confirm WHICH row
+        // remains after deletion of the middle entry.
+        for i in mappings.inputMappings.indices {
+            mappings.inputMappings[i].number = 50 + i
+        }
+        mappings.removeInputMapping(at: 1)
+        XCTAssertEqual(mappings.inputMappings.count, 3)
+        // ids renumbered to match new array positions
+        XCTAssertEqual(mappings.inputMappings.map(\.id), [1, 2, 3])
+        // The remaining rows are the original 0, 2, 3 (CC 50, 52, 53)
+        XCTAssertEqual(mappings.inputMappings.map(\.number), [50, 52, 53])
+    }
+
+    func testMoveInputMappingShufflesAndRenumbers() {
+        var mappings = MIDIMappingSet.defaults(forModelDimension: 5)
+        for i in mappings.inputMappings.indices {
+            mappings.inputMappings[i].number = 50 + i
+        }
+        // Move row at index 3 (CC 53) up to index 0
+        mappings.moveInputMapping(from: 3, to: 0)
+        XCTAssertEqual(mappings.inputMappings.map(\.number), [53, 50, 51, 52])
+        // Ids reflect new positions
+        XCTAssertEqual(mappings.inputMappings.map(\.id), [1, 2, 3, 4])
+    }
+
+    func testRemoveOutputMappingDoesNotTouchInputs() {
+        var mappings = MIDIMappingSet.defaults(forModelDimension: 5)
+        let originalInputs = mappings.inputMappings
+        mappings.removeOutputMapping(at: 0)
+        XCTAssertEqual(mappings.outputMappings.count, 3)
+        XCTAssertEqual(mappings.inputMappings, originalInputs)
+    }
+
+    func testRemoveAtInvalidIndexIsNoOp() {
+        var mappings = MIDIMappingSet.defaults(forModelDimension: 3)
+        let snapshot = mappings
+        mappings.removeInputMapping(at: 99)
+        mappings.removeInputMapping(at: -1)
+        XCTAssertEqual(mappings, snapshot)
+    }
+
+    // MARK: - Decoupled mapping count semantics
+
+    func testDecodeReflectsArrayPositionAfterReorder() {
+        // After reordering, the decoded dim id should reflect the new array
+        // position — not the original creation order. Encoding a value through
+        // the moved mapping and decoding the bytes back round-trips to the new
+        // dim index.
+        var mappings = MIDIMappingSet(
+            inputMappings: [
+                DimensionMapping(id: 1, messageType: .controlChange, channel: 1, number: 10),
+                DimensionMapping(id: 2, messageType: .controlChange, channel: 1, number: 20),
+                DimensionMapping(id: 3, messageType: .controlChange, channel: 1, number: 30),
+            ],
+            outputMappings: []
+        )
+        // Move CC 30 from dim 3 to dim 1.
+        mappings.moveInputMapping(from: 2, to: 0)
+        XCTAssertEqual(mappings.inputMappings[0].number, 30)
+
+        let mapper = MIDIMapper(mappings: mappings)
+        let bytes: [UInt8] = [0xB0, 30, 64]
+        let result = bytes.withUnsafeBufferPointer { buf in
+            mapper.decodeInput(bytes: buf.baseAddress!, length: 3)
+        }
+        // CC 30 now maps to dim 1 (1-based) — id was renumbered after the move.
+        XCTAssertEqual(result?.0, 1)
+    }
+
+    func testEncodeIgnoresMappingsBeyondValueVector() {
+        // Mapping list has 5 rows but the engine only provides 3 values — the
+        // extra mappings produce no MIDI (no crash, no stale output).
+        let mappings = MIDIMappingSet(
+            inputMappings: [],
+            outputMappings: [
+                DimensionMapping(id: 1, messageType: .controlChange, channel: 1, number: 10),
+                DimensionMapping(id: 2, messageType: .controlChange, channel: 1, number: 20),
+                DimensionMapping(id: 3, messageType: .controlChange, channel: 1, number: 30),
+                DimensionMapping(id: 4, messageType: .controlChange, channel: 1, number: 40),
+                DimensionMapping(id: 5, messageType: .controlChange, channel: 1, number: 50),
+            ]
+        )
+        var mapper = MIDIMapper(mappings: mappings)
+        let events = mapper.encodeOutput(values: [0.1, 0.2, 0.3])
+        XCTAssertEqual(events.count, 3)
+        XCTAssertEqual(events.map(\.data1), [10, 20, 30])
+    }
+
     func testReleaseAllNotesClearsDedupState() {
         // After releaseAllNotes the dedup clock should reset, so the next
         // emission of the same note re-articulates even within the window.

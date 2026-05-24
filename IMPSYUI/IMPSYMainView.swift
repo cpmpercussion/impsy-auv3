@@ -45,10 +45,10 @@ public struct IMPSYMainView: View {
         }
         .padding(.top, 12)
         .background(platformBackground)
-        #if os(macOS)
-        // Give the macOS window a sensible minimum; iOS adapts to its host.
-        .frame(minWidth: 380, minHeight: 520)
-        #endif
+        // Window min/max sizing is owned by the macOS NSWindow itself
+        // (`HostWindowController.contentMinSize`). A SwiftUI `.frame(minWidth:
+        // minHeight:)` here would propagate through NSHostingController and
+        // can pin the window's content size, breaking interactive resize.
     }
 
     @ViewBuilder
@@ -69,7 +69,7 @@ public struct IMPSYMainView: View {
         HStack {
             Text("IMPSY")
                 .font(.system(.title2, design: .rounded, weight: .bold))
-            Text("AUv3")
+            Text("Intelligent MIDI")
                 .font(.system(.subheadline, design: .monospaced))
                 .foregroundStyle(.secondary)
                 .padding(.leading, 2)
@@ -121,7 +121,7 @@ public final class IMPSYViewController: AUViewController, AUAudioUnitFactory {
             hc.view.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
         hc.didMove(toParent: self)
-        preferredContentSize = CGSize(width: 400, height: 560)
+        preferredContentSize = CGSize(width: 400, height: 660)
     }
 
     /// `AUAudioUnitFactory` entry point. The AUv3 host (AUM, GarageBand, …)
@@ -156,16 +156,30 @@ public final class IMPSYViewController: AUViewController, AUAudioUnitFactory {
         super.viewDidLoad()
         let mainView = IMPSYMainView(viewModel: viewModel)
         let hc = NSHostingController(rootView: mainView)
+        // Stop NSHostingController from propagating SwiftUI's ideal size up
+        // into the host VC and NSWindow. With the default `.preferredContentSize`
+        // option active, the window's content min/max gets pinned to the
+        // SwiftUI view's intrinsic size and interactive resize stops working.
+        hc.sizingOptions = []
         addChild(hc)
         view.addSubview(hc.view)
         hc.view.translatesAutoresizingMaskIntoConstraints = false
+        // Allow the hosting view to be compressed below its intrinsic content
+        // size — otherwise the window cannot shrink past whatever SwiftUI
+        // wants to render.
+        hc.view.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        hc.view.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
+        hc.view.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        hc.view.setContentHuggingPriority(.defaultLow, for: .vertical)
         NSLayoutConstraint.activate([
             hc.view.topAnchor.constraint(equalTo: view.topAnchor),
             hc.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             hc.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             hc.view.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
-        preferredContentSize = CGSize(width: 400, height: 560)
+        // No `preferredContentSize` here — the standalone host owns window
+        // sizing via NSWindow.contentMinSize. Real AUv3 hosts (Logic etc.)
+        // size the plug-in surface themselves.
     }
 
     /// `AUAudioUnitFactory` entry point. The AUv3 host instantiates this view
