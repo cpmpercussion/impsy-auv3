@@ -411,6 +411,37 @@ final class MIDIMappingTests: XCTestCase {
         XCTAssertEqual(events[0].statusByte, 0xB1)
     }
 
+    // MARK: - Restricted-dimension encode (inputThru echo)
+
+    func testEncodeRestrictsToProvidedDimensions() {
+        // Two output mappings; passing `dimensions: [1]` should emit only
+        // dim 2's CC, not dim 1's. Used by the inputThru path so moving one
+        // direct-input fader doesn't retrigger every output dimension.
+        let mappings = MIDIMappingSet(
+            inputMappings: [],
+            outputMappings: [
+                DimensionMapping(id: 1, messageType: .controlChange, channel: 1, number: 74),
+                DimensionMapping(id: 2, messageType: .controlChange, channel: 1, number: 75),
+            ]
+        )
+        var mapper = MIDIMapper(mappings: mappings)
+        let events = mapper.encodeOutput(values: [0.25, 0.75], dimensions: [1])
+        XCTAssertEqual(events.count, 1)
+        XCTAssertEqual(events[0].data1, 75)
+    }
+
+    func testEncodeWithEmptyDimensionsEmitsNothing() {
+        let mappings = MIDIMappingSet(
+            inputMappings: [],
+            outputMappings: [
+                DimensionMapping(id: 1, messageType: .controlChange, channel: 1, number: 74),
+            ]
+        )
+        var mapper = MIDIMapper(mappings: mappings)
+        let events = mapper.encodeOutput(values: [0.5], dimensions: [])
+        XCTAssertTrue(events.isEmpty)
+    }
+
     func testReleaseAllNotesClearsDedupState() {
         // After releaseAllNotes the dedup clock should reset, so the next
         // emission of the same note re-articulates even within the window.

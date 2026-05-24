@@ -103,12 +103,17 @@ struct MIDIMapper {
     /// same channel is inserted before the new note_on, keeping each channel
     /// monophonic.
     ///
+    /// When `dimensions` is non-nil, only output mappings at those indices are
+    /// emitted — used by the inputThru path so moving one input echoes through
+    /// only its own output mapping, not every dimension's.
+    ///
     /// When `now` is non-nil and the corresponding window is > 0, a dimension's
     /// event is suppressed if it would re-emit the same MIDI value within that
     /// window — `noteDedupWindow` for note_on, `ccDedupWindow` for CC and pitch
     /// bend. A suppressed Note On also omits its paired note_off so the held
     /// note keeps ringing rather than being chopped to silence.
     mutating func encodeOutput(values: [Float],
+                                dimensions: Set<Int>? = nil,
                                 now: TimeInterval? = nil,
                                 noteDedupWindow: TimeInterval = 0,
                                 ccDedupWindow: TimeInterval = 0) -> [MIDIEvent] {
@@ -116,6 +121,7 @@ struct MIDIMapper {
         for (i, mapping) in mappings.outputMappings.enumerated() {
             guard i < values.count else { break }
             guard mapping.enabled else { continue }
+            if let dimensions, !dimensions.contains(i) { continue }
             let v = values[i].clamped(to: 0...1)
             let ch = UInt8(mapping.channel - 1) & 0x0F
 

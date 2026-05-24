@@ -280,12 +280,16 @@ final class InteractionEngine: @unchecked Sendable {
                                       piTemp: piTemp, sigmaTemp: sigmaTemp)
             }
 
-            // MIDI thru: re-encode the current input vector through the
-            // output mappings (mirrors `send_back_values` in
-            // ../impsy/impsy/interaction.py). One emission per tick — the
-            // vector already reflects the latest value per dimension.
+            // MIDI thru: re-encode just the dimensions that changed this tick
+            // through their output mappings, so moving one input echoes a
+            // single output rather than retriggering every dimension. (IMPSY
+            // Python's `send_back_values` emits the whole vector; we deviate
+            // here because the user expects 1-in / 1-out from the direct
+            // input controls.)
             if inputThru {
-                let events = mapper.encodeOutput(values: inputVector)
+                let touched = Set(touchedDimensions)
+                let events = mapper.encodeOutput(values: inputVector,
+                                                 dimensions: touched)
                 for event in events {
                     outputBuffer.enqueue(
                         RawMIDIPacket(event.statusByte, event.data1, event.data2,
