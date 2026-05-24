@@ -17,6 +17,12 @@ settings:
     # Without this, Xcode Cloud's Release archive builds universal by default
     # and fails to link _TfLite* symbols on x86_64.
     "ARCHS[sdk=macosx*]": arm64
+    # Required by Apple's notary service. The Xcode GUI's Distribute App flow
+    # auto-enables Hardened Runtime, but `xcodebuild -exportArchive` (used by
+    # scripts/release-macos.sh) respects only what the archive carries — so the
+    # project itself must opt in. Harmless for Debug; required for Developer ID
+    # distribution and the App Store.
+    ENABLE_HARDENED_RUNTIME: "YES"
 
 # TFLite is vended through Packages/TensorFlowLite as a local Swift Package.
 # The package's binary xcframework is produced by
