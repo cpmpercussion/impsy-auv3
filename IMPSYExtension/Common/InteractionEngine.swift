@@ -64,9 +64,17 @@ final class InteractionEngine: @unchecked Sendable {
     var logger: SessionLogger?
 
     // MARK: - Ring buffers
+    //
+    // Capacity sized for headroom, not measured need. At a 10 ms tick the
+    // input buffer drains 100×/sec, so 1024 slots tolerates ~100 k events/sec
+    // of burst before silent drops — well above any plausible MIDI stream.
+    // Bumped from 256 as a cheap preventative against issue #26 (long-session
+    // throughput degradation): if overflow turns out to be the cause, this
+    // widens the window before drops start; if not, the extra ~16 KB per
+    // buffer is harmless.
 
-    let inputBuffer  = MIDIRingBuffer(capacity: 256)
-    let outputBuffer = MIDIRingBuffer(capacity: 256)
+    let inputBuffer  = MIDIRingBuffer(capacity: 1024)
+    let outputBuffer = MIDIRingBuffer(capacity: 1024)
 
     // MARK: - State change notification (called on main thread)
 
