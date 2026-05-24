@@ -18,6 +18,7 @@ import CoreAudioKit
 final class HostViewController: UIViewController {
 
     private var audioUnit: IMPSYAudioUnit?
+    private var midiBridge: CoreMIDIBridge?
     private let statusLabel = UILabel()
     private let probeBanner = UILabel()
     private var probeFinished = false
@@ -52,6 +53,12 @@ final class HostViewController: UIViewController {
                 NSLog("[IMPSY] host: in-process allocateRenderResources FAILED: %@",
                       String(describing: error))
             }
+
+            // Expose this in-process AU as Core MIDI virtual ports so non-AUv3
+            // hosts (or apps that don't host aumi) can drive IMPSY over MIDI.
+            let bridge = CoreMIDIBridge(engine: au.engine)
+            bridge.start()
+            midiBridge = bridge
 
             let vc = IMPSYViewController()
             vc.audioUnit = au
