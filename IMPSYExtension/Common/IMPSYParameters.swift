@@ -60,4 +60,10 @@ enum IMPSYConstants {
     static let scaleFactor: Float = 10.0
     /// Minimum time delta (seconds) to prevent division by zero / runaway speed
     static let minimumDeltaTime: Double = 0.000454
+    /// Scheduling floor for the response-loop dt, in seconds. Mirrors the
+    /// `dt = max(dt, 0.001)` clamp in `../impsy/impsy/interaction.py` (in
+    /// `playback_rnn_loop`) — guards against zero/negative dt before the
+    /// timescale multiply. Applied before timescale so the model sees the
+    /// same floored value it gets scheduled against.
+    static let responseLoopMinDt: Double = 0.001
 }

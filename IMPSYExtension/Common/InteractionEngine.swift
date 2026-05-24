@@ -360,7 +360,11 @@ final class InteractionEngine: @unchecked Sendable {
         }
 
         // output[0] = dt (seconds until this event), output[1…] = values in [0,1].
-        let dt = Double(output[0]) * Double(timescale)
+        // Apply the 1 ms scheduling floor before the timescale multiply so the
+        // value we schedule against matches what we feed back into the RNN.
+        // Mirrors `dt = max(dt, 0.001)` in ../impsy/impsy/interaction.py:485.
+        let rawDt = max(Double(output[0]), IMPSYConstants.responseLoopMinDt)
+        let dt = rawDt * Double(timescale)
         let values = Array(output.dropFirst())
 
         // The next prediction is seeded with this event. Matching interaction.py,
