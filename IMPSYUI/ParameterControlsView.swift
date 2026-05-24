@@ -51,7 +51,8 @@ private struct ParameterRow: View {
             SlimParameterBar(value: $value,
                              range: range,
                              label: label,
-                             formattedValue: String(format: format, value))
+                             formattedValue: String(format: format, value),
+                             tint: .accentColor)
             Text(String(format: format, value))
                 .frame(width: 60, alignment: .trailing)
                 .font(.system(.caption, design: .monospaced))
@@ -66,12 +67,22 @@ private struct ParameterRow: View {
 // capsule shows the current value and a thin tick marks the position.
 // Drag (or tap) anywhere along the bar sets the value, so the control is
 // still usable when a MIDI controller isn't driving it.
+//
+// Reused by the Dashboard's per-dimension faders, hence `internal` and the
+// caller-provided `tint`.
 
-private struct SlimParameterBar: View {
+struct SlimParameterBar: View {
     @Binding var value: Float
     let range: ClosedRange<Float>
     let label: String
     let formattedValue: String
+    var tint: Color = .accentColor
+    /// When `false`, the tick marker only appears while the user is dragging.
+    /// Used by the Dashboard's per-dimension faders so a long stack of bars
+    /// reads as a clean progress meter at rest.
+    var showsTickWhenIdle: Bool = true
+
+    @State private var isInteracting: Bool = false
 
     private static let barHeight: CGFloat = 6
     private static let tickHeight: CGFloat = 14
@@ -93,12 +104,14 @@ private struct SlimParameterBar: View {
                     .fill(Color.primary.opacity(0.10))
                     .frame(height: Self.barHeight)
                 Capsule()
-                    .fill(Color.accentColor.opacity(0.65))
+                    .fill(tint.opacity(0.65))
                     .frame(width: fillWidth, height: Self.barHeight)
                 Rectangle()
                     .fill(Color.primary.opacity(0.85))
                     .frame(width: 2, height: Self.tickHeight)
                     .offset(x: max(0, fillWidth - 1))
+                    .opacity(showsTickWhenIdle || isInteracting ? 1 : 0)
+                    .animation(.easeOut(duration: 0.12), value: isInteracting)
             }
             .frame(width: width, height: Self.hitHeight)
             .contentShape(Rectangle())
@@ -106,10 +119,14 @@ private struct SlimParameterBar: View {
                 DragGesture(minimumDistance: 0)
                     .onChanged { g in
                         guard width > 0 else { return }
+                        isInteracting = true
                         let x = min(max(g.location.x, 0), width)
                         let frac = Float(x / width)
                         let span = range.upperBound - range.lowerBound
                         value = range.lowerBound + frac * span
+                    }
+                    .onEnded { _ in
+                        isInteracting = false
                     }
             )
         }

@@ -296,11 +296,16 @@ private struct DimensionFader: View {
                 .frame(width: 22, height: 22)
                 .background(Circle().fill(Color.primary.opacity(0.08)))
 
-            Slider(value: userBinding, in: 0...1)
-                .controlSize(.small)
-                // Red while the user is driving the model (input), green while
-                // the fader is reflecting model output. Matches the IN/OUT LEDs.
-                .tint(dragActive ? .red : .green)
+            // Red while the user is driving the model (input), green while
+            // the bar is reflecting model output. Matches the IN/OUT LEDs.
+            SlimParameterBar(
+                value: userBinding,
+                range: 0...1,
+                label: "Dimension \(dimension)",
+                formattedValue: String(format: "%.2f", localValue),
+                tint: dragActive ? .red : .green,
+                showsTickWhenIdle: false
+            )
 
             Text(String(format: "%.2f", localValue))
                 .font(.system(.caption, design: .monospaced))
