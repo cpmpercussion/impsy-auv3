@@ -26,9 +26,42 @@ final class ModelLoadingUITests: IMPSYUITestCase {
         )
     }
 
-    private func assertModelLoads(fixtureName: String, expectedDimension: Int) throws {
-        let b64 = try fixtureBase64(name: fixtureName, ext: "tflite")
-        let app = launchHost(modelB64: b64)
+    func testNonBundledDim9ModelLoadsEndToEnd() throws {
+        try assertModelLoads(
+            fixtureName: "musicMDRNN-dim9-layers2-units64-mixtures5-scale10",
+            expectedDimension: 9
+        )
+    }
+
+    // Largest dimension we currently exercise — the IMPSY issue notes that
+    // anything over 16 was untested in Python (see issue #10). Loading this
+    // confirms the AUv3 can host wider models without falling over.
+    //
+    // The 1 MB tflite base64-encodes to ~1.3 MB which blows past the iOS
+    // simulator's launch env-var size limit, so this case writes the fixture
+    // to a temp file and passes the path via IMPSY_TEST_MODEL_PATH instead.
+    func testNonBundledDim25ModelLoadsEndToEnd() throws {
+        try assertModelLoads(
+            fixtureName: "musicMDRNN-dim25-layers2-units128-mixtures5-scale10",
+            expectedDimension: 25,
+            viaFilePath: true
+        )
+    }
+
+    private func assertModelLoads(fixtureName: String,
+                                  expectedDimension: Int,
+                                  viaFilePath: Bool = false) throws {
+        let app: XCUIApplication
+        if viaFilePath {
+            let data = try fixtureData(name: fixtureName, ext: "tflite")
+            let url = URL(fileURLWithPath: NSTemporaryDirectory())
+                .appendingPathComponent("impsy-ui-test-\(fixtureName).tflite")
+            try data.write(to: url)
+            app = launchHost(modelPath: url.path)
+        } else {
+            let b64 = try fixtureBase64(name: fixtureName, ext: "tflite")
+            app = launchHost(modelB64: b64)
+        }
 
         // 1. Dashboard shows "Ready · dim:N …" via the dashboard.modelStatus
         //    identifier — confirms the load succeeded and inspector ran.

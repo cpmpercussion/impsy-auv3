@@ -26,12 +26,14 @@ class IMPSYUITestCase: XCTestCase {
     @discardableResult
     func launchHost(
         modelB64: String? = nil,
+        modelPath: String? = nil,
         configB64: String? = nil,
         logFolder: URL? = nil,
         injectHz: Double? = nil
     ) -> XCUIApplication {
         let app = XCUIApplication()
         if let modelB64 { app.launchEnvironment[UITestEnvKeys.modelB64] = modelB64 }
+        if let modelPath { app.launchEnvironment[UITestEnvKeys.modelPath] = modelPath }
         if let configB64 { app.launchEnvironment[UITestEnvKeys.configB64] = configB64 }
         if let logFolder { app.launchEnvironment[UITestEnvKeys.logFolder] = logFolder.path }
         if let injectHz { app.launchEnvironment[UITestEnvKeys.injectHz] = String(injectHz) }
