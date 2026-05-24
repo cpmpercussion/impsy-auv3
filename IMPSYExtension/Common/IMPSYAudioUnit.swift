@@ -23,6 +23,12 @@ public final class IMPSYAudioUnit: AUAudioUnit {
     var _currentModelConfig: ModelConfig?
     var _currentModelDisplayName: String?
 
+    // Session-logging state (folder bookmark + on/off + display path)
+    var _logFolderBookmarkData: Data?
+    var _logFolderDisplayPath: String?
+    var _loggingEnabled: Bool = false
+    let sessionLogger = SessionLogger()
+
     /// Cached midiOutputEventBlock — captured in allocateRenderResources, used in render block.
     private var cachedMidiOutputBlock: AUMIDIOutputEventBlock?
 
@@ -51,6 +57,7 @@ public final class IMPSYAudioUnit: AUAudioUnit {
 
         setupParameterTree()
         setupEngineCallbacks()
+        engine.logger = sessionLogger
         loadBundledDefaultModel()
     }
 
@@ -194,4 +201,5 @@ extension Notification.Name {
     static let IMPSYModelStatusChanged       = Notification.Name("IMPSYModelStatusChanged")
     static let IMPSYEventGenerated           = Notification.Name("IMPSYEventGenerated")
     static let IMPSYUserInputReceived        = Notification.Name("IMPSYUserInputReceived")
+    static let IMPSYLogFolderChanged         = Notification.Name("IMPSYLogFolderChanged")
 }

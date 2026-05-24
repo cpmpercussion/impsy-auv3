@@ -41,6 +41,9 @@ enum StateKey {
     static let piTemp           = "impsy.piTemp"
     static let timescale        = "impsy.timescale"
     static let inputThru        = "impsy.inputThru"
+    static let logFolderBookmark = "impsy.logFolderBookmark" // Data: security-scoped bookmark
+    static let logFolderName    = "impsy.logFolderName"      // String: display path
+    static let loggingEnabled   = "impsy.loggingEnabled"     // Float: 0/1
 }
 
 // MARK: - IMPSY Model Constants

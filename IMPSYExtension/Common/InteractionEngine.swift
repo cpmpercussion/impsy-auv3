@@ -53,6 +53,11 @@ final class InteractionEngine: @unchecked Sendable {
     var timescale: Float  = ParameterDefaults.timescale
     var inputThru: Bool   = ParameterDefaults.inputThru > 0.5
 
+    // Session logger (set once by the AU after init; nil in test contexts).
+    // All calls happen on the inference queue; the logger marshals onto its
+    // own writer queue internally.
+    var logger: SessionLogger?
+
     // MARK: - Ring buffers
 
     let inputBuffer  = MIDIRingBuffer(capacity: 256)
@@ -130,6 +135,9 @@ final class InteractionEngine: @unchecked Sendable {
                 self.responseGeneration &+= 1
                 self.callResponseState = .call
                 self.lastUserInputTime = ProcessInfo.processInfo.systemUptime
+                // Roll the log to a fresh file for this model.
+                self.logger?.startSession(dimension: config.dimension,
+                                          modelDisplayName: displayName)
                 NSLog("[IMPSY] InteractionEngine: RNN ready for %@", displayName)
             } catch {
                 NSLog("[IMPSY] InteractionEngine: failed to load model: %@",
@@ -145,6 +153,7 @@ final class InteractionEngine: @unchecked Sendable {
             self.flushAllNoteOffs()
             self.rnn = nil
             self.inputVector = []
+            self.logger?.endSession()
             // Cancel any in-flight response chain.
             self.responseGeneration &+= 1
         }
@@ -239,6 +248,9 @@ final class InteractionEngine: @unchecked Sendable {
                     }
                     touchedDimensions.append(index)
                     gotUserInput = true
+                    // Log the full input vector after each mapped MIDI message,
+                    // matching `construct_input_list` in ../impsy/impsy/interaction.py.
+                    logger?.logInterface(values: inputVector)
                 }
             }
         }
@@ -359,6 +371,8 @@ final class InteractionEngine: @unchecked Sendable {
                                   length: event.byteCount)
                 )
             }
+            // …log the RNN sample (mirrors `log_predictions` in IMPSY Python)…
+            self.logger?.logRNN(values: values)
             // …notify the UI. `values` is one entry per output dimension
             // (index 0 = dim 1) in the same order as `events`, so the UI can
             // both flash per-dim LEDs and update fader positions.

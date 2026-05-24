@@ -36,6 +36,70 @@ extension IMPSYAudioUnit {
 
     var currentModelDisplayName: String? { _currentModelDisplayName }
 
+    // MARK: - Session Logging (public API for UI)
+
+    /// Currently selected logs folder (display path). `nil` if the user has
+    /// not picked one yet.
+    var logFolderDisplayPath: String? { _logFolderDisplayPath }
+
+    /// Whether session logging is enabled. Disabling closes the current log
+    /// file. Enabling without a folder selected is a no-op for writes.
+    var loggingEnabled: Bool {
+        get { _loggingEnabled }
+        set {
+            _loggingEnabled = newValue
+            sessionLogger.setEnabled(newValue)
+            if newValue {
+                // Reseed a session on the active model so the next event opens
+                // a fresh file (or no-ops if no model is loaded).
+                if let config = _currentModelConfig,
+                   let name = _currentModelDisplayName {
+                    sessionLogger.startSession(dimension: config.dimension,
+                                               modelDisplayName: name)
+                }
+            }
+        }
+    }
+
+    /// Set the logs folder from a user-picked URL. Creates a security-scoped
+    /// bookmark, hands it to the logger, and persists it in `fullState`.
+    func setLogFolder(url: URL) {
+        let accessing = url.startAccessingSecurityScopedResource()
+        defer { if accessing { url.stopAccessingSecurityScopedResource() } }
+
+        do {
+            #if os(macOS)
+            let bookmark = try url.bookmarkData(
+                options: .withSecurityScope,
+                includingResourceValuesForKeys: nil,
+                relativeTo: nil
+            )
+            #else
+            let bookmark = try url.bookmarkData(
+                options: [],
+                includingResourceValuesForKeys: nil,
+                relativeTo: nil
+            )
+            #endif
+            _logFolderBookmarkData = bookmark
+            _logFolderDisplayPath = url.path
+            sessionLogger.setFolderBookmark(bookmark)
+            // If a model is loaded, re-arm the session so the next event opens
+            // a file in the new folder.
+            if _loggingEnabled,
+               let config = _currentModelConfig,
+               let name = _currentModelDisplayName {
+                sessionLogger.startSession(dimension: config.dimension,
+                                           modelDisplayName: name)
+            }
+            NotificationCenter.default.post(name: .IMPSYLogFolderChanged, object: self,
+                                            userInfo: ["path": url.path])
+        } catch {
+            NSLog("[IMPSY] Failed to create log folder bookmark: %@",
+                  String(describing: error))
+        }
+    }
+
     // MARK: - fullState Override
 
     public override var fullState: [String: Any]? {
@@ -175,6 +239,14 @@ extension IMPSYAudioUnit {
         state[StateKey.timescale] = engine.timescale
         state[StateKey.inputThru] = engine.inputThru ? Float(1) : Float(0)
 
+        if let bookmark = _logFolderBookmarkData {
+            state[StateKey.logFolderBookmark] = bookmark
+        }
+        if let path = _logFolderDisplayPath {
+            state[StateKey.logFolderName] = path
+        }
+        state[StateKey.loggingEnabled] = _loggingEnabled ? Float(1) : Float(0)
+
         return state
     }
 
@@ -218,6 +290,18 @@ extension IMPSYAudioUnit {
 
         // Restore display name
         _currentModelDisplayName = state[StateKey.modelURLString] as? String
+
+        // Restore log folder + enabled flag (apply to the logger before the
+        // model loads so any session start that fires below picks them up).
+        if let bookmark = state[StateKey.logFolderBookmark] as? Data {
+            _logFolderBookmarkData = bookmark
+            sessionLogger.setFolderBookmark(bookmark)
+        }
+        _logFolderDisplayPath = state[StateKey.logFolderName] as? String
+        if let v = state[StateKey.loggingEnabled] as? Float {
+            _loggingEnabled = v > 0.5
+            sessionLogger.setEnabled(_loggingEnabled)
+        }
 
         // Restore model from bookmark, or fall back to bundled default
         if let bookmark = state[StateKey.modelBookmark] as? Data {
