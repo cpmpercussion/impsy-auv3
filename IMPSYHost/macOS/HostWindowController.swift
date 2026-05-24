@@ -58,7 +58,7 @@ final class HostWindowController: NSWindowController {
 
             let vc = IMPSYViewController()
             vc.audioUnit = au
-            window?.contentViewController = makeContentView(auView: vc.view)
+            window?.contentViewController = makeContentView(auViewController: vc)
         } catch {
             window?.title = "IMPSY — Init error: \(error.localizedDescription)"
             NSLog("[IMPSY] AU init failed: %@", String(describing: error))
@@ -91,11 +91,17 @@ final class HostWindowController: NSWindowController {
     }
 
     /// Compose the AU's view with a bottom status strip showing bridge state.
-    private func makeContentView(auView: NSView) -> NSViewController {
+    /// `addChild` is what keeps the AU view controller (and its view model)
+    /// alive — without it the VC is released when `loadAudioUnit` returns and
+    /// the viewModel.audioUnit binding (set on the main queue, post-dealloc)
+    /// silently no-ops, leaving model loads stuck on "Loading...".
+    private func makeContentView(auViewController: NSViewController) -> NSViewController {
         let container = NSViewController()
         let root = NSView()
         container.view = root
+        container.addChild(auViewController)
 
+        let auView = auViewController.view
         auView.translatesAutoresizingMaskIntoConstraints = false
         bridgeStatusLabel.translatesAutoresizingMaskIntoConstraints = false
         bridgeStatusLabel.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
