@@ -50,6 +50,17 @@
                ReferencedContainer = "container:IMPSY-AUv3.xcodeproj">
             </BuildableReference>
          </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "90DE170F05FEA09F9B8044D7"
+               BuildableName = "IMPSYUITests-macOS.xctest"
+               BlueprintName = "IMPSYUITests-macOS"
+               ReferencedContainer = "container:IMPSY-AUv3.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
       <CommandLineArguments>
       </CommandLineArguments>

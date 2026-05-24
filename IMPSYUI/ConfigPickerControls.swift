@@ -33,11 +33,14 @@ struct ConfigPickerControls: View {
             HStack(spacing: 8) {
                 Button("Import TOML…") { presentImporter() }
                     .buttonStyle(.bordered)
+                    .accessibilityIdentifier("config.importButton")
                 Button("Export TOML…") { presentExporter() }
                     .buttonStyle(.bordered)
+                    .accessibilityIdentifier("config.exportButton")
                 Spacer()
             }
             statusLine
+                .accessibilityIdentifier("config.statusLine")
         }
         .padding(10)
         .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.06)))

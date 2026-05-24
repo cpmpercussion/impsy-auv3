@@ -27,6 +27,7 @@ struct LoggingControlsView: View {
                     Text("Record Session Logs")
                 }
                 .toggleStyle(.switch)
+                .accessibilityIdentifier("logging.toggle")
                 Spacer()
             }
 
@@ -38,10 +39,12 @@ struct LoggingControlsView: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                         .truncationMode(.head)
+                        .accessibilityIdentifier("logging.folderPath")
                 } else {
                     Text("No folder selected")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("logging.folderPath")
                 }
             }
         }

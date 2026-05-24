@@ -11,13 +11,16 @@ struct ModelStatusView: View {
                         .font(.system(.subheadline, design: .monospaced))
                         .lineLimit(1)
                         .truncationMode(.middle)
+                        .accessibilityIdentifier("settings.modelName")
                     Text(viewModel.modelStatus.displayString)
                         .font(.caption)
                         .foregroundStyle(statusColor)
+                        .accessibilityIdentifier("settings.modelStatus")
                 }
                 Spacer()
                 ModelPickerButton { url in viewModel.loadModel(url: url) }
                     .buttonStyle(.bordered)
+                    .accessibilityIdentifier("settings.loadModelButton")
             }
         }
         .padding(10)

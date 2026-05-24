@@ -8,25 +8,30 @@ struct ParameterControlsView: View {
             ParameterRow(label: "Threshold",
                          value: $viewModel.threshold,
                          range: ParameterRanges.thresholdMin...ParameterRanges.thresholdMax,
-                         format: "%.1f s")
+                         format: "%.1f s",
+                         identifier: "param.threshold")
             ParameterRow(label: "Sigma Temp",
                          value: $viewModel.sigmaTemp,
                          range: ParameterRanges.sigmaTempMin...ParameterRanges.sigmaTempMax,
-                         format: "%.3f")
+                         format: "%.3f",
+                         identifier: "param.sigmaTemp")
             ParameterRow(label: "Pi Temp",
                          value: $viewModel.piTemp,
                          range: ParameterRanges.piTempMin...ParameterRanges.piTempMax,
-                         format: "%.2f")
+                         format: "%.2f",
+                         identifier: "param.piTemp")
             ParameterRow(label: "Timescale",
                          value: $viewModel.timescale,
                          range: ParameterRanges.timescaleMin...ParameterRanges.timescaleMax,
-                         format: "%.2f ×")
+                         format: "%.2f ×",
+                         identifier: "param.timescale")
             HStack(spacing: 8) {
                 Text("MIDI Thru")
                     .frame(width: 80, alignment: .leading)
                     .font(.system(.caption, design: .rounded))
                 Toggle("", isOn: $viewModel.inputThru)
                     .labelsHidden()
+                    .accessibilityIdentifier("param.inputThru")
                 Spacer()
             }
         }
@@ -42,6 +47,7 @@ private struct ParameterRow: View {
     @Binding var value: Float
     let range: ClosedRange<Float>
     let format: String
+    let identifier: String
 
     var body: some View {
         HStack(spacing: 8) {
@@ -57,7 +63,10 @@ private struct ParameterRow: View {
                 .frame(width: 60, alignment: .trailing)
                 .font(.system(.caption, design: .monospaced))
                 .monospacedDigit()
+                .accessibilityIdentifier("\(identifier).value")
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(identifier)
     }
 }
 

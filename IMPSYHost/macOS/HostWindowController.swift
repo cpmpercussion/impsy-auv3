@@ -59,6 +59,7 @@ final class HostWindowController: NSWindowController {
             let vc = IMPSYViewController()
             vc.audioUnit = au
             window?.contentViewController = makeContentView(auViewController: vc)
+            HostTestHooks.apply(to: au)
         } catch {
             window?.title = "IMPSY — Init error: \(error.localizedDescription)"
             NSLog("[IMPSY] AU init failed: %@", String(describing: error))
@@ -107,6 +108,7 @@ final class HostWindowController: NSWindowController {
         bridgeStatusLabel.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
         bridgeStatusLabel.lineBreakMode = .byTruncatingTail
         bridgeStatusLabel.maximumNumberOfLines = 1
+        bridgeStatusLabel.setAccessibilityIdentifier("host.bridgeStatusLabel")
 
         root.addSubview(auView)
         root.addSubview(bridgeStatusLabel)

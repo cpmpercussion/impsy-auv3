@@ -109,6 +109,7 @@ targets:
     scheme:
       testTargets:
         - IMPSYTests
+        - IMPSYUITests-macOS
     sources:
       - path: IMPSYHost/macOS
         excludes: ["Info.plist"]
@@ -256,15 +257,13 @@ targets:
         GENERATE_INFOPLIST_FILE: "YES"
 
   # ── iOS UI Tests ──────────────────────────────────────────────────────────────
-  # Drives the iOS host in the simulator to verify the model-loading code path
-  # (issue #9 regression). Uses a base64 launch-env to inject a fixture model
-  # so we exercise `IMPSYAudioUnit.loadModel(url:)` without driving the
-  # document picker UI itself.
+  # Drives the iOS host in the simulator. Cross-platform test cases live under
+  # TestsUI/Shared and are compiled into both UI test targets.
   IMPSYUITests-iOS:
     type: bundle.ui-testing
     platform: iOS
     sources:
-      - path: TestsUI
+      - path: TestsUI/Shared
       - path: Tests/Fixtures
         buildPhase: resources
     dependencies:
@@ -275,3 +274,24 @@ targets:
         SWIFT_VERSION: "5.9"
         GENERATE_INFOPLIST_FILE: "YES"
         TEST_TARGET_NAME: IMPSYHost-iOS
+
+  # ── macOS UI Tests ────────────────────────────────────────────────────────────
+  # Drives the macOS host in the user's session. Shares all of TestsUI/Shared
+  # with the iOS target; TestsUI/macOS holds macOS-only smokes (CoreMIDI
+  # bridge status label).
+  IMPSYUITests-macOS:
+    type: bundle.ui-testing
+    platform: macOS
+    sources:
+      - path: TestsUI/Shared
+      - path: TestsUI/macOS
+      - path: Tests/Fixtures
+        buildPhase: resources
+    dependencies:
+      - target: IMPSYHost-macOS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: au.charlesmartin.impsy.uitests
+        SWIFT_VERSION: "5.9"
+        GENERATE_INFOPLIST_FILE: "YES"
+        TEST_TARGET_NAME: IMPSYHost-macOS

@@ -64,7 +64,7 @@ final class HostViewController: UIViewController {
             vc.audioUnit = au
             statusLabel.removeFromSuperview()
             embed(viewController: vc)
-            loadUITestModelIfRequested(au: au)
+            HostTestHooks.apply(to: au)
         } catch {
             statusLabel.text = "Failed to create IMPSY AU:\n\(error.localizedDescription)"
             print("[IMPSY] AU init failed: \(error)")
@@ -72,26 +72,6 @@ final class HostViewController: UIViewController {
 
         setupProbeBanner()
         probeOutOfProcess(desc: desc)
-    }
-
-    // MARK: - UI Test Hook
-    //
-    // The UI test target passes a base64-encoded TFLite model in the
-    // `IMPSY_TEST_MODEL_B64` env var. When present we stage the bytes in the
-    // host's tmp directory and run them through the normal `loadModel(url:)`
-    // path — the same code path exercised by the document picker, just
-    // without the picker UI. Lets us regression-test the fix for #9 in CI.
-    private func loadUITestModelIfRequested(au: IMPSYAudioUnit) {
-        guard let b64 = ProcessInfo.processInfo.environment["IMPSY_TEST_MODEL_B64"],
-              let data = Data(base64Encoded: b64) else { return }
-        let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("ui-test-model.tflite")
-        do {
-            try data.write(to: url)
-            au.loadModel(url: url)
-        } catch {
-            NSLog("[IMPSY] UI test model write failed: %@", String(describing: error))
-        }
     }
 
     // MARK: - Out-of-process probe (reproduces the AUM path)

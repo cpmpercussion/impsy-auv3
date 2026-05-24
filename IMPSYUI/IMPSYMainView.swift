@@ -35,6 +35,7 @@ public struct IMPSYMainView: View {
             .pickerStyle(.segmented)
             .labelsHidden()
             .padding(.horizontal, 16)
+            .accessibilityIdentifier("screenPicker")
 
             ScrollView {
                 screenContent

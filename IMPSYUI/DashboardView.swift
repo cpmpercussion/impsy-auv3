@@ -30,9 +30,11 @@ struct DashboardView: View {
                     .font(.system(.subheadline, design: .monospaced))
                     .lineLimit(1)
                     .truncationMode(.middle)
+                    .accessibilityIdentifier("dashboard.modelName")
                 Text(viewModel.modelStatus.displayString)
                     .font(.caption)
                     .foregroundStyle(statusColor)
+                    .accessibilityIdentifier("dashboard.modelStatus")
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(10)
@@ -50,6 +52,7 @@ struct DashboardView: View {
                         .frame(width: 10, height: 10)
                     Text(viewModel.callResponseState)
                         .font(.system(.subheadline, design: .monospaced, weight: .semibold))
+                        .accessibilityIdentifier("dashboard.callResponseState")
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
@@ -74,6 +77,7 @@ struct DashboardView: View {
                     .buttonStyle(.bordered)
                     .controlSize(.small)
                     .disabled(!viewModel.modelStatus.isReady)
+                    .accessibilityIdentifier("dashboard.resetLSTM")
             }
             .padding(10)
             .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.04)))

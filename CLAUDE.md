@@ -156,10 +156,21 @@ Defaults match `configs/AiC-charles-u6midipro.toml` in the IMPSY repo.
 
 ## Running tests
 
-Tests run on the macOS target. They are in `Tests/` and are bundled into the `IMPSYTests` target. `testInspectBundledSmallModel` exercises end-to-end TFLite inference against a small `.tflite` fixture shipped with the test bundle, so it doubles as a smoke test that the macOS xcframework loads correctly. The pair of `testInspectRealModel` / `testInspectSmallModel` tests look for models at `../impsy/models/` and skip otherwise.
+Three test targets:
+
+- **`IMPSYTests`** (unit, macOS) — `Tests/*.swift`. `testInspectBundledSmallModel` runs end-to-end TFLite inference against a bundled `.tflite` fixture, so it doubles as a smoke test that the macOS xcframework loads correctly. The pair of `testInspectRealModel` / `testInspectSmallModel` tests look for models at `../impsy/models/` and skip otherwise.
+- **`IMPSYUITests-iOS`** / **`IMPSYUITests-macOS`** — XCUITests in `TestsUI/Shared/` (compiled into both) plus per-platform suites under `TestsUI/macOS/`. Drive the host apps end-to-end: model loading, TOML import, logging hookup, screen switching, CALL/RESPONSE state. The cross-platform helpers in `IMPSYUITestCase.swift` paper over the iOS-vs-macOS differences in how SwiftUI surfaces text content (`label` vs `value`) and toggle state (`String "1"` vs `Int 1`).
+
+The UI tests inject fixture data via `IMPSY_TEST_*` launch-environment variables — `IMPSYHost/Common/HostTestHooks.swift` reads them and dispatches into the AU, bypassing system pickers. Hooks ship only in the host (not the AUv3 plugin).
 
 ```bash
-xcodebuild test -project IMPSY-AUv3.xcodeproj -scheme IMPSYHost-macOS -destination 'platform=macOS'
+# Unit tests only
+xcodebuild test -project IMPSY-AUv3.xcodeproj -scheme IMPSYHost-macOS -destination 'platform=macOS' -only-testing:IMPSYTests
+
+# Everything (smoke + UI tests on both platforms)
+./scripts/smoke.sh                  # ios + macos smokes + all UI tests
+./scripts/smoke.sh tests macos      # just macOS UI tests
+./scripts/smoke.sh macos            # just macOS host launch smoke
 ```
 
 ## Common tasks
