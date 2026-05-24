@@ -48,6 +48,10 @@ targets:
     sources:
       - path: IMPSYHost/iOS
         excludes: ["Info.plist"]
+      # Code shared by both host targets (e.g. CoreMIDIBridge — exposes the
+      # in-process AU as a pair of Core MIDI virtual endpoints for DAWs that
+      # don't host AUv3 MIDI processors).
+      - path: IMPSYHost/Common
       # Compile AU logic directly into the host so it can be instantiated
       # without auriserver (iOS does not allow bundle.load() on .appex files
       # and has no loadInProcess option, so the extension mechanism is only
@@ -108,6 +112,10 @@ targets:
     sources:
       - path: IMPSYHost/macOS
         excludes: ["Info.plist"]
+      # Code shared by both host targets (e.g. CoreMIDIBridge — exposes the
+      # in-process AU as a pair of Core MIDI virtual endpoints for DAWs that
+      # don't host AUv3 MIDI processors).
+      - path: IMPSYHost/Common
       # Compile AU logic directly into the host so it can be instantiated
       # in-process — matches the iOS host, and avoids depending on
       # audiocomponentd having registered the extension (which is unreliable
