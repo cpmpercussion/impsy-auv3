@@ -48,11 +48,86 @@ private struct ParameterRow: View {
             Text(label)
                 .frame(width: 80, alignment: .leading)
                 .font(.system(.caption, design: .rounded))
-            Slider(value: $value, in: range)
+            SlimParameterBar(value: $value,
+                             range: range,
+                             label: label,
+                             formattedValue: String(format: format, value))
             Text(String(format: format, value))
                 .frame(width: 60, alignment: .trailing)
                 .font(.system(.caption, design: .monospaced))
                 .monospacedDigit()
+        }
+    }
+}
+
+// MARK: - Slim Interactive Bar
+//
+// Replaces a stock `Slider` with a low-profile horizontal bar: a filled
+// capsule shows the current value and a thin tick marks the position.
+// Drag (or tap) anywhere along the bar sets the value, so the control is
+// still usable when a MIDI controller isn't driving it.
+
+private struct SlimParameterBar: View {
+    @Binding var value: Float
+    let range: ClosedRange<Float>
+    let label: String
+    let formattedValue: String
+
+    private static let barHeight: CGFloat = 6
+    private static let tickHeight: CGFloat = 14
+    private static let hitHeight: CGFloat = 22
+
+    private var normalized: CGFloat {
+        let span = range.upperBound - range.lowerBound
+        guard span > 0 else { return 0 }
+        let clamped = min(max(value, range.lowerBound), range.upperBound)
+        return CGFloat((clamped - range.lowerBound) / span)
+    }
+
+    var body: some View {
+        GeometryReader { geo in
+            let width = geo.size.width
+            let fillWidth = max(0, min(width, width * normalized))
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(Color.primary.opacity(0.10))
+                    .frame(height: Self.barHeight)
+                Capsule()
+                    .fill(Color.accentColor.opacity(0.65))
+                    .frame(width: fillWidth, height: Self.barHeight)
+                Rectangle()
+                    .fill(Color.primary.opacity(0.85))
+                    .frame(width: 2, height: Self.tickHeight)
+                    .offset(x: max(0, fillWidth - 1))
+            }
+            .frame(width: width, height: Self.hitHeight)
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { g in
+                        guard width > 0 else { return }
+                        let x = min(max(g.location.x, 0), width)
+                        let frac = Float(x / width)
+                        let span = range.upperBound - range.lowerBound
+                        value = range.lowerBound + frac * span
+                    }
+            )
+        }
+        .frame(height: Self.hitHeight)
+        .accessibilityElement()
+        .accessibilityLabel(Text(label))
+        .accessibilityValue(Text(formattedValue))
+        .accessibilityAdjustableAction { direction in
+            let span = range.upperBound - range.lowerBound
+            let step = span / 20
+            switch direction {
+            case .increment:
+                value = min(range.upperBound, value + step)
+            case .decrement:
+                value = max(range.lowerBound, value - step)
+            @unknown default:
+                break
+            }
         }
     }
 }
