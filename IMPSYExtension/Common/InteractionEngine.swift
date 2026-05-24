@@ -52,6 +52,11 @@ final class InteractionEngine: @unchecked Sendable {
     var piTemp: Float     = ParameterDefaults.piTemp
     var timescale: Float  = ParameterDefaults.timescale
     var inputThru: Bool   = ParameterDefaults.inputThru > 0.5
+    // Output dedup windows (milliseconds). Applied to the RNN response output
+    // only; the inputThru echo passes through unfiltered so the user's own
+    // playing is never gated by the model's emission history.
+    var dedupNoteWindowMs: Float = ParameterDefaults.dedupNoteWindowMs
+    var dedupCCWindowMs:   Float = ParameterDefaults.dedupCCWindowMs
 
     // Session logger (set once by the AU after init; nil in test contexts).
     // All calls happen on the inference queue; the logger marshals onto its
@@ -353,7 +358,6 @@ final class InteractionEngine: @unchecked Sendable {
         // output[0] = dt (seconds until this event), output[1…] = values in [0,1].
         let dt = Double(output[0]) * Double(timescale)
         let values = Array(output.dropFirst())
-        let events = mapper.encodeOutput(values: values)
 
         // The next prediction is seeded with this event. Matching interaction.py,
         // the timescaled dt is what gets fed back into the RNN.
@@ -363,6 +367,16 @@ final class InteractionEngine: @unchecked Sendable {
             guard let self,
                   self.callResponseState == .response,
                   generation == self.responseGeneration else { return }
+
+            // Encode inside the closure so the dedup clock uses the moment the
+            // event actually fires, not when it was scheduled.
+            let now = ProcessInfo.processInfo.systemUptime
+            let events = self.mapper.encodeOutput(
+                values: values,
+                now: now,
+                noteDedupWindow: TimeInterval(self.dedupNoteWindowMs) / 1000.0,
+                ccDedupWindow:   TimeInterval(self.dedupCCWindowMs)   / 1000.0
+            )
 
             // Emit this event's MIDI…
             for event in events {

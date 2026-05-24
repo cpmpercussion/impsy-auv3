@@ -48,6 +48,14 @@ struct MIDIMapper {
     // (../impsy/impsy/impsio.py: note_off-before-note_on per channel).
     private var lastNotes: [UInt8: UInt8] = [:]
 
+    // Per-output-dimension last emission (raw MIDI value + time). Only written
+    // by the dedup path on encodeOutput(values:now:…); used to suppress repeat
+    // emissions of the same MIDI value within a time window.
+    //   noteOn: rawMIDI = note number 0–127
+    //   controlChange: rawMIDI = CC value 0–127
+    //   pitchBend: rawMIDI = 14-bit value 0–16383
+    private var lastEmissions: [Int: (rawMIDI: Int, time: TimeInterval)] = [:]
+
     init(mappings: MIDIMappingSet) {
         self.mappings = mappings
     }
@@ -94,7 +102,16 @@ struct MIDIMapper {
     /// For note_on outputs, a note_off for the previously emitted note on the
     /// same channel is inserted before the new note_on, keeping each channel
     /// monophonic.
-    mutating func encodeOutput(values: [Float]) -> [MIDIEvent] {
+    ///
+    /// When `now` is non-nil and the corresponding window is > 0, a dimension's
+    /// event is suppressed if it would re-emit the same MIDI value within that
+    /// window — `noteDedupWindow` for note_on, `ccDedupWindow` for CC and pitch
+    /// bend. A suppressed Note On also omits its paired note_off so the held
+    /// note keeps ringing rather than being chopped to silence.
+    mutating func encodeOutput(values: [Float],
+                                now: TimeInterval? = nil,
+                                noteDedupWindow: TimeInterval = 0,
+                                ccDedupWindow: TimeInterval = 0) -> [MIDIEvent] {
         var events: [MIDIEvent] = []
         for (i, mapping) in mappings.outputMappings.enumerated() {
             guard i < values.count else { break }
@@ -105,19 +122,40 @@ struct MIDIMapper {
             switch mapping.messageType {
             case .noteOn:
                 let note = UInt8(clamping: Int(v * 127.0 + 0.5))
+                if let now, noteDedupWindow > 0,
+                   let last = lastEmissions[i],
+                   last.rawMIDI == Int(note),
+                   (now - last.time) < noteDedupWindow {
+                    continue
+                }
                 if let previous = lastNotes[ch] {
                     events.append(MIDIEvent(0x80 | ch, previous, 0))
                 }
                 events.append(MIDIEvent(0x90 | ch, note, 64))
                 lastNotes[ch] = note
+                if let now { lastEmissions[i] = (Int(note), now) }
             case .controlChange:
                 let ccVal = UInt8(clamping: mapping.denormalize(toCCValue: v))
+                if let now, ccDedupWindow > 0,
+                   let last = lastEmissions[i],
+                   last.rawMIDI == Int(ccVal),
+                   (now - last.time) < ccDedupWindow {
+                    continue
+                }
                 events.append(MIDIEvent(0xB0 | ch, UInt8(mapping.number & 0x7F), ccVal))
+                if let now { lastEmissions[i] = (Int(ccVal), now) }
             case .pitchBend:
                 let raw = Int(v * 16383.0 + 0.5)
+                if let now, ccDedupWindow > 0,
+                   let last = lastEmissions[i],
+                   last.rawMIDI == raw,
+                   (now - last.time) < ccDedupWindow {
+                    continue
+                }
                 let lsb = UInt8(raw & 0x7F)
                 let msb = UInt8((raw >> 7) & 0x7F)
                 events.append(MIDIEvent(0xE0 | ch, lsb, msb))
+                if let now { lastEmissions[i] = (raw, now) }
             }
         }
         return events
@@ -131,6 +169,9 @@ struct MIDIMapper {
             MIDIEvent(0x80 | ch, note, 0)
         }
         lastNotes.removeAll()
+        // Mode/model transitions reset the world for the next response chain,
+        // so the dedup clock should also restart.
+        lastEmissions.removeAll()
         return offs
     }
 

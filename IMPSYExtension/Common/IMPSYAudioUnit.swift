@@ -29,6 +29,11 @@ public final class IMPSYAudioUnit: AUAudioUnit {
     var _loggingEnabled: Bool = false
     let sessionLogger = SessionLogger()
 
+    // Output dedup windows (milliseconds). Mirrored into the engine on write
+    // so it can apply them inside the response-loop encode.
+    var _dedupNoteWindowMs: Float = ParameterDefaults.dedupNoteWindowMs
+    var _dedupCCWindowMs:   Float = ParameterDefaults.dedupCCWindowMs
+
     /// Cached midiOutputEventBlock — captured in allocateRenderResources, used in render block.
     private var cachedMidiOutputBlock: AUMIDIOutputEventBlock?
 

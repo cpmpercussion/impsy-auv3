@@ -288,4 +288,146 @@ final class MIDIMappingTests: XCTestCase {
         XCTAssertEqual(decoded, original)
         XCTAssertFalse(decoded.enabled)
     }
+
+    // MARK: - Output dedup (RNN output filter)
+
+    func testDedupSuppressesRepeatedNoteWithinWindow() {
+        // Same note number re-emitted inside the window: nothing should go
+        // out — neither the new note_on nor the paired note_off, so the held
+        // note keeps ringing rather than being chopped to silence.
+        let mappings = MIDIMappingSet(
+            inputMappings: [],
+            outputMappings: [DimensionMapping(id: 1, messageType: .noteOn, channel: 1, number: 0)]
+        )
+        var mapper = MIDIMapper(mappings: mappings)
+        let first = mapper.encodeOutput(values: [60.0 / 127.0],
+                                        now: 100.0,
+                                        noteDedupWindow: 0.030)
+        XCTAssertEqual(first.count, 1)
+        XCTAssertEqual(first[0].statusByte, 0x90)
+
+        let repeat1 = mapper.encodeOutput(values: [60.0 / 127.0],
+                                          now: 100.010,
+                                          noteDedupWindow: 0.030)
+        XCTAssertTrue(repeat1.isEmpty)
+    }
+
+    func testDedupAllowsRepeatedNoteOutsideWindow() {
+        let mappings = MIDIMappingSet(
+            inputMappings: [],
+            outputMappings: [DimensionMapping(id: 1, messageType: .noteOn, channel: 1, number: 0)]
+        )
+        var mapper = MIDIMapper(mappings: mappings)
+        _ = mapper.encodeOutput(values: [60.0 / 127.0],
+                                now: 100.0,
+                                noteDedupWindow: 0.030)
+        // 50 ms later, outside the 30 ms window — should re-articulate
+        // (note_off for previous + note_on for the same note).
+        let events = mapper.encodeOutput(values: [60.0 / 127.0],
+                                         now: 100.050,
+                                         noteDedupWindow: 0.030)
+        XCTAssertEqual(events.count, 2)
+        XCTAssertEqual(events[0].statusByte, 0x80)
+        XCTAssertEqual(events[1].statusByte, 0x90)
+    }
+
+    func testDedupWindowZeroDoesNotSuppress() {
+        let mappings = MIDIMappingSet(
+            inputMappings: [],
+            outputMappings: [DimensionMapping(id: 1, messageType: .noteOn, channel: 1, number: 0)]
+        )
+        var mapper = MIDIMapper(mappings: mappings)
+        _ = mapper.encodeOutput(values: [60.0 / 127.0],
+                                now: 100.0,
+                                noteDedupWindow: 0)
+        let events = mapper.encodeOutput(values: [60.0 / 127.0],
+                                         now: 100.001,
+                                         noteDedupWindow: 0)
+        XCTAssertEqual(events.count, 2)   // re-articulates: off + on
+    }
+
+    func testDedupSuppressesCCWithSameValue() {
+        let mappings = MIDIMappingSet(
+            inputMappings: [],
+            outputMappings: [DimensionMapping(id: 1, messageType: .controlChange,
+                                              channel: 1, number: 74)]
+        )
+        var mapper = MIDIMapper(mappings: mappings)
+        _ = mapper.encodeOutput(values: [0.5],
+                                now: 200.0,
+                                ccDedupWindow: 0.030)
+        // Same CC value within window — suppressed.
+        let same = mapper.encodeOutput(values: [0.5],
+                                       now: 200.020,
+                                       ccDedupWindow: 0.030)
+        XCTAssertTrue(same.isEmpty)
+        // Different CC value within window — emitted (only exact MIDI-byte
+        // matches dedup with no tolerance).
+        let changed = mapper.encodeOutput(values: [0.6],
+                                          now: 200.025,
+                                          ccDedupWindow: 0.030)
+        XCTAssertEqual(changed.count, 1)
+        XCTAssertEqual(changed[0].statusByte, 0xB0)
+    }
+
+    func testDedupSuppressesPitchBendWithSameValue() {
+        let mappings = MIDIMappingSet(
+            inputMappings: [],
+            outputMappings: [DimensionMapping(id: 1, messageType: .pitchBend,
+                                              channel: 1, number: 0)]
+        )
+        var mapper = MIDIMapper(mappings: mappings)
+        _ = mapper.encodeOutput(values: [0.5],
+                                now: 300.0,
+                                ccDedupWindow: 0.030)
+        let same = mapper.encodeOutput(values: [0.5],
+                                       now: 300.010,
+                                       ccDedupWindow: 0.030)
+        XCTAssertTrue(same.isEmpty)
+    }
+
+    func testDedupIsPerDimension() {
+        // Dim 1 reuses its note number; dim 2 is on a different channel/note.
+        // Dim 1 gets suppressed; dim 2 fires normally.
+        let mappings = MIDIMappingSet(
+            inputMappings: [],
+            outputMappings: [
+                DimensionMapping(id: 1, messageType: .noteOn, channel: 1, number: 0),
+                DimensionMapping(id: 2, messageType: .controlChange,
+                                 channel: 2, number: 7),
+            ]
+        )
+        var mapper = MIDIMapper(mappings: mappings)
+        _ = mapper.encodeOutput(values: [60.0 / 127.0, 0.25],
+                                now: 400.0,
+                                noteDedupWindow: 0.030,
+                                ccDedupWindow: 0.030)
+        let events = mapper.encodeOutput(values: [60.0 / 127.0, 0.75],
+                                         now: 400.010,
+                                         noteDedupWindow: 0.030,
+                                         ccDedupWindow: 0.030)
+        // Note suppressed; CC went through because its value changed.
+        XCTAssertEqual(events.count, 1)
+        XCTAssertEqual(events[0].statusByte, 0xB1)
+    }
+
+    func testReleaseAllNotesClearsDedupState() {
+        // After releaseAllNotes the dedup clock should reset, so the next
+        // emission of the same note re-articulates even within the window.
+        let mappings = MIDIMappingSet(
+            inputMappings: [],
+            outputMappings: [DimensionMapping(id: 1, messageType: .noteOn,
+                                              channel: 1, number: 0)]
+        )
+        var mapper = MIDIMapper(mappings: mappings)
+        _ = mapper.encodeOutput(values: [60.0 / 127.0],
+                                now: 500.0,
+                                noteDedupWindow: 0.030)
+        _ = mapper.releaseAllNotes()
+        let events = mapper.encodeOutput(values: [60.0 / 127.0],
+                                         now: 500.005,
+                                         noteDedupWindow: 0.030)
+        XCTAssertEqual(events.count, 1)
+        XCTAssertEqual(events[0].statusByte, 0x90)
+    }
 }

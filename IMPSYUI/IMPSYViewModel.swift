@@ -69,6 +69,10 @@ final class IMPSYViewModel: ObservableObject {
     @Published var timescale: Float = ParameterDefaults.timescale
     @Published var inputThru: Bool  = ParameterDefaults.inputThru > 0.5
 
+    // Output dedup windows (ms). 0 = off; mirrors fullState on the AU.
+    @Published var dedupNoteWindowMs: Float = ParameterDefaults.dedupNoteWindowMs
+    @Published var dedupCCWindowMs:   Float = ParameterDefaults.dedupCCWindowMs
+
     // Session logging
     @Published var loggingEnabled: Bool = false
     @Published var logFolderPath: String? = nil
@@ -137,6 +141,10 @@ final class IMPSYViewModel: ObservableObject {
         // Sync logging state
         loggingEnabled = au.loggingEnabled
         logFolderPath  = au.logFolderDisplayPath
+
+        // Sync dedup windows
+        dedupNoteWindowMs = au.dedupNoteWindowMs
+        dedupCCWindowMs   = au.dedupCCWindowMs
 
         // Listen for model status changes
         let modelToken = NotificationCenter.default.addObserver(
@@ -253,6 +261,8 @@ final class IMPSYViewModel: ObservableObject {
         $piTemp.dropFirst().sink    { [weak self] val in self?.setParameter(.piTemp,    value: val) }.store(in: &cancellables)
         $timescale.dropFirst().sink { [weak self] val in self?.setParameter(.timescale, value: val) }.store(in: &cancellables)
         $inputThru.dropFirst().sink { [weak self] on  in self?.setParameter(.inputThru, value: on ? 1 : 0) }.store(in: &cancellables)
+        $dedupNoteWindowMs.dropFirst().sink { [weak self] v in self?.audioUnit?.dedupNoteWindowMs = v }.store(in: &cancellables)
+        $dedupCCWindowMs.dropFirst().sink   { [weak self] v in self?.audioUnit?.dedupCCWindowMs   = v }.store(in: &cancellables)
     }
 
     private func setParameter(_ address: ParameterAddress, value: Float) {

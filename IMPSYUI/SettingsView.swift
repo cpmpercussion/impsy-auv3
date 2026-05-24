@@ -22,6 +22,11 @@ struct SettingsView: View {
             }
 
             VStack(alignment: .leading, spacing: 4) {
+                sectionLabel("Dedup")
+                DedupControlsView(viewModel: viewModel)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
                 sectionLabel("Configuration")
                 ConfigPickerControls(viewModel: viewModel)
             }
