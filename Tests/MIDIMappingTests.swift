@@ -227,4 +227,65 @@ final class MIDIMappingTests: XCTestCase {
         let decoded   = try JSONDecoder().decode([DimensionMapping].self, from: data)
         XCTAssertEqual(decoded, original.inputMappings)
     }
+
+    // MARK: - Disabled dimensions (issue #24)
+
+    func testDisabledOutputDimensionEmitsNothing() {
+        var disabled = DimensionMapping(id: 1, messageType: .controlChange,
+                                        channel: 1, number: 74)
+        disabled.enabled = false
+        let enabled = DimensionMapping(id: 2, messageType: .controlChange,
+                                       channel: 1, number: 75)
+        let mappings = MIDIMappingSet(
+            inputMappings: [],
+            outputMappings: [disabled, enabled]
+        )
+        var mapper = MIDIMapper(mappings: mappings)
+        let events = mapper.encodeOutput(values: [0.5, 0.5])
+        // Only the enabled dim emits — disabled dim is silent.
+        XCTAssertEqual(events.count, 1)
+        XCTAssertEqual(events[0].data1, 75)
+    }
+
+    func testDisabledInputDimensionIgnoresMatchingMIDI() {
+        var disabled = DimensionMapping(id: 1, messageType: .controlChange,
+                                        channel: 1, number: 74)
+        disabled.enabled = false
+        let mappings = MIDIMappingSet(
+            inputMappings: [disabled],
+            outputMappings: []
+        )
+        let mapper = MIDIMapper(mappings: mappings)
+        let bytes: [UInt8] = [0xB0, 74, 64]
+        let result = bytes.withUnsafeBufferPointer { buf in
+            mapper.denseUpdate(fromBytes: buf.baseAddress!, length: 3)
+        }
+        XCTAssertNil(result)
+    }
+
+    func testEnabledDefaultsTrue() {
+        let m = DimensionMapping.defaults(forDimension: 1)
+        XCTAssertTrue(m.enabled)
+    }
+
+    func testEnabledDecodesMissingAsTrue() throws {
+        // Mappings persisted before #24 don't carry an `enabled` key. The
+        // custom decoder must default missing → enabled so existing fullState
+        // dictionaries don't silently disable every dimension on restore.
+        let legacyJSON = """
+        {"id":1,"messageType":"controlChange","channel":1,"number":74,
+         "minValue":0,"maxValue":127}
+        """.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(DimensionMapping.self, from: legacyJSON)
+        XCTAssertTrue(decoded.enabled)
+    }
+
+    func testEnabledRoundTrips() throws {
+        var original = DimensionMapping.defaults(forDimension: 3)
+        original.enabled = false
+        let data    = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(DimensionMapping.self, from: data)
+        XCTAssertEqual(decoded, original)
+        XCTAssertFalse(decoded.enabled)
+    }
 }

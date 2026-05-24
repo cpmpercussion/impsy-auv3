@@ -31,6 +31,18 @@ struct MappingEditorView: View {
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 24)
             } else {
+                // Master "all on / all off" toggle. Tri-state: if any row is
+                // disabled, ticking it re-enables everything; if all rows are
+                // already on, ticking sets them all off. The use case (issue
+                // #24) is MIDI-learn in a host like Ableton — disable every
+                // dim, enable just the one you want to teach, then turn
+                // everything back on with one tap.
+                MasterEnableToggle(
+                    allEnabled: allEnabled(isInput: isInput),
+                    setAll: { on in setAllEnabled(on, isInput: isInput) }
+                )
+                .accessibilityIdentifier("mapping.all.\(isInput ? "input" : "output")")
+
                 // No inner ScrollView: the parent view already scrolls, and
                 // nesting vertical scroll views fights for the drag gesture.
                 VStack(spacing: 6) {
@@ -48,6 +60,28 @@ struct MappingEditorView: View {
         }
         .padding(10)
         .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.04)))
+    }
+
+    /// True iff every dim on the active tab is enabled. Used to drive the
+    /// master toggle's checked state — an unchecked master means "at least
+    /// one row is disabled" so tapping it re-enables everything.
+    private func allEnabled(isInput: Bool) -> Bool {
+        let arr = isInput ? viewModel.mappings.inputMappings
+                          : viewModel.mappings.outputMappings
+        return arr.allSatisfy { $0.enabled }
+    }
+
+    private func setAllEnabled(_ on: Bool, isInput: Bool) {
+        if isInput {
+            for i in viewModel.mappings.inputMappings.indices {
+                viewModel.mappings.inputMappings[i].enabled = on
+            }
+        } else {
+            for i in viewModel.mappings.outputMappings.indices {
+                viewModel.mappings.outputMappings[i].enabled = on
+            }
+        }
+        viewModel.saveMappings()
     }
 
     /// Two-way binding into one entry of the active (input/output) mapping list.
@@ -81,11 +115,19 @@ private struct MappingRow: View {
 
     var body: some View {
         HStack(spacing: 8) {
+            // Per-row enable toggle. Unchecking suppresses both encode and
+            // decode for this dimension — needed when teaching MIDI mappings
+            // in a host that only learns the most-recent incoming message
+            // (issue #24).
+            EnableCheckbox(isOn: $mapping.enabled)
+                .accessibilityIdentifier("mapping.row.\(dimensionIndex).enabled")
+
             // Dimension badge
             Text("\(dimensionIndex)")
                 .font(.system(.caption, design: .monospaced, weight: .semibold))
                 .frame(width: 22, height: 22)
                 .background(Circle().fill(Color.primary.opacity(0.08)))
+                .opacity(mapping.enabled ? 1 : 0.4)
 
             // Message type. A Menu with a custom label (rather than a .menu
             // Picker) is used because Picker ignores .font / .lineLimit on its
@@ -167,5 +209,51 @@ private struct CompactStepper: View {
         .buttonStyle(.plain)
         .disabled(!active)
         .foregroundStyle(active ? Color.accentColor : Color.secondary)
+    }
+}
+
+// MARK: - Enable Checkbox
+
+/// SF Symbol-based checkbox, used per row. SwiftUI's `Toggle` defaults to a
+/// large switch on iOS that would crowd the row, and `.toggleStyle(.checkbox)`
+/// is macOS-only. A tappable square + checkmark renders the same on both
+/// platforms.
+private struct EnableCheckbox: View {
+    @Binding var isOn: Bool
+
+    var body: some View {
+        Button {
+            isOn.toggle()
+        } label: {
+            Image(systemName: isOn ? "checkmark.square.fill" : "square")
+                .font(.system(size: 18, weight: .regular))
+                .foregroundStyle(isOn ? Color.accentColor : Color.secondary)
+                .frame(width: 24, height: 24)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Master Enable Toggle
+
+/// "All on / all off" row above the per-dimension list. Tapping flips every
+/// row to the opposite of the current "all enabled" state.
+private struct MasterEnableToggle: View {
+    let allEnabled: Bool
+    let setAll: (Bool) -> Void
+
+    var body: some View {
+        HStack(spacing: 8) {
+            EnableCheckbox(isOn: Binding(
+                get: { allEnabled },
+                set: { setAll($0) }
+            ))
+            Text(allEnabled ? "All dimensions enabled" : "Enable all dimensions")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 2)
     }
 }

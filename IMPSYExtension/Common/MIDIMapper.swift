@@ -64,6 +64,7 @@ struct MIDIMapper {
         let channel = Int(status & 0x0F) + 1
 
         for mapping in mappings.inputMappings {
+            guard mapping.enabled else { continue }
             guard mapping.channel == channel else { continue }
             switch mapping.messageType {
             case .noteOn:
@@ -97,6 +98,7 @@ struct MIDIMapper {
         var events: [MIDIEvent] = []
         for (i, mapping) in mappings.outputMappings.enumerated() {
             guard i < values.count else { break }
+            guard mapping.enabled else { continue }
             let v = values[i].clamped(to: 0...1)
             let ch = UInt8(mapping.channel - 1) & 0x0F
 

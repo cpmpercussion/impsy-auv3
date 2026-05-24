@@ -41,6 +41,10 @@ struct DimensionMapping: Codable, Identifiable, Equatable {
     var minValue: Int = 0
     /// Upper bound of the CC range (0–127).
     var maxValue: Int = 127
+    /// When false, this dimension is skipped on both encode (no MIDI emitted)
+    /// and decode (incoming MIDI ignored). AUv3-only — not represented in
+    /// IMPSY's TOML schema, so a TOML round-trip resets to enabled.
+    var enabled: Bool = true
 
     static func defaults(forDimension index: Int) -> DimensionMapping {
         DimensionMapping(
@@ -55,10 +59,11 @@ struct DimensionMapping: Codable, Identifiable, Equatable {
     //
     // Custom decode lets older persisted state (fullState dictionaries written
     // before min/max existed) round-trip without breaking — missing fields
-    // fall back to the full 0–127 range.
+    // fall back to the full 0–127 range. `enabled` defaults to true when
+    // absent so pre-#24 mappings keep their previous behaviour.
 
     private enum CodingKeys: String, CodingKey {
-        case id, messageType, channel, number, minValue, maxValue
+        case id, messageType, channel, number, minValue, maxValue, enabled
     }
 
     init(id: Int,
@@ -66,13 +71,15 @@ struct DimensionMapping: Codable, Identifiable, Equatable {
          channel: Int,
          number: Int,
          minValue: Int = 0,
-         maxValue: Int = 127) {
+         maxValue: Int = 127,
+         enabled: Bool = true) {
         self.id = id
         self.messageType = messageType
         self.channel = channel
         self.number = number
         self.minValue = minValue
         self.maxValue = maxValue
+        self.enabled = enabled
     }
 
     init(from decoder: Decoder) throws {
@@ -83,6 +90,7 @@ struct DimensionMapping: Codable, Identifiable, Equatable {
         number      = try c.decode(Int.self, forKey: .number)
         minValue    = try c.decodeIfPresent(Int.self, forKey: .minValue) ?? 0
         maxValue    = try c.decodeIfPresent(Int.self, forKey: .maxValue) ?? 127
+        enabled     = try c.decodeIfPresent(Bool.self, forKey: .enabled) ?? true
     }
 }
 
