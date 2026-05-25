@@ -33,6 +33,9 @@ Pods/
 *.xcodeproj/xcshareddata/*
 !*.xcodeproj/xcshareddata/xcschemes
 
+# Release pipeline output (scripts/release-macos.sh)
+build/
+
 # OS
 .DS_Store
 
