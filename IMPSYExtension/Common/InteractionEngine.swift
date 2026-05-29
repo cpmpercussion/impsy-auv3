@@ -88,9 +88,10 @@ final class InteractionEngine: @unchecked Sendable {
     var onEventGenerated: ((Double, [MIDIEvent], [Float]) -> Void)?
 
     /// Called on the inference queue for each mapped user MIDI event drained
-    /// from the input buffer, with its 0-based dimension index. Used purely for
-    /// UI activity feedback (ACT LED + per-dimension indicators).
-    var onUserInputReceived: ((Int) -> Void)?
+    /// from the input buffer, with its 0-based dimension index and the new
+    /// normalised value for that dimension. Used purely for UI activity
+    /// feedback (ACT LED + per-dimension indicators + direct-input faders).
+    var onUserInputReceived: ((Int, Float) -> Void)?
 
     // MARK: - Init
 
@@ -273,7 +274,8 @@ final class InteractionEngine: @unchecked Sendable {
         // ── User input: record it and let the RNN listen ─────────────────────
         if gotUserInput {
             for dim in touchedDimensions {
-                onUserInputReceived?(dim)
+                let value = dim < inputVector.count ? inputVector[dim] : 0
+                onUserInputReceived?(dim, value)
             }
             let dt = max(now - lastUserInputTime, IMPSYConstants.minimumDeltaTime)
             lastUserInputTime = now

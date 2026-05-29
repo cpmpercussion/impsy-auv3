@@ -62,6 +62,11 @@ final class IMPSYViewModel: ObservableObject {
     // message had arrived.
     @Published var outputValues: [Float] = []
 
+    // Last normalised value seen on inbound user MIDI for each input dimension.
+    // Drives the dashboard faders' red "live input" feedback: when MIDI arrives
+    // the matching fader jumps to this value and tints red, mirroring a drag.
+    @Published var inputValues: [Float] = []
+
     // Parameter values (two-way bound to AUParameterTree)
     @Published var threshold: Float = ParameterDefaults.threshold
     @Published var sigmaTemp: Float = ParameterDefaults.sigmaTemp
@@ -198,6 +203,10 @@ final class IMPSYViewModel: ObservableObject {
             if let dim = note.userInfo?["dimension"] as? Int,
                self.inputDimensionCounts.indices.contains(dim) {
                 self.inputDimensionCounts[dim] += 1
+                if let value = note.userInfo?["value"] as? Float,
+                   self.inputValues.indices.contains(dim) {
+                    self.inputValues[dim] = value
+                }
             }
         }
 
@@ -250,6 +259,9 @@ final class IMPSYViewModel: ObservableObject {
         }
         if outputValues.count != userDims {
             outputValues = Array(repeating: 0, count: userDims)
+        }
+        if inputValues.count != userDims {
+            inputValues = Array(repeating: 0, count: userDims)
         }
     }
 

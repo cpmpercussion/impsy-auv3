@@ -139,6 +139,10 @@ struct DashboardView: View {
                         DimensionFader(
                             dimension: i + 1,
                             modelValue: viewModel.outputValues[i],
+                            inputValue: viewModel.inputValues.indices.contains(i)
+                                ? viewModel.inputValues[i] : 0,
+                            inputTrigger: viewModel.inputDimensionCounts.indices.contains(i)
+                                ? viewModel.inputDimensionCounts[i] : 0,
                             onDrag: { value in
                                 viewModel.injectInput(dimensionIndex: i, value: value)
                             }
@@ -261,19 +265,26 @@ private struct DimensionLED: View {
 // MARK: - Dimension Fader
 
 /// Horizontal slider for one input dimension. Idle, it follows `modelValue`
-/// (the last value the RNN emitted for the matching output dimension). On
-/// touch, the user drives it instead: the slider's local value diverges from
-/// `modelValue` while dragging and calls `onDrag` so the view model can inject
-/// MIDI input — closing the loop, the engine's next output event will refresh
-/// `modelValue` and the fader will resume tracking once released.
+/// (the last value the RNN emitted for the matching output dimension). It is
+/// driven red — detached from `modelValue` — by either of two user actions:
+///   • Drag: the slider's value diverges and `onDrag` injects MIDI input.
+///   • Live MIDI in: each mapped message bumps `inputTrigger`, snapping the
+///     bar to `inputValue` so the user sees their playing reflected in CALL
+///     mode, the same way the model drives it green in RESPONSE mode.
+/// Either way the bar settles back to `modelValue` ~250 ms after the last
+/// interaction.
 private struct DimensionFader: View {
     let dimension: Int
     let modelValue: Float
+    let inputValue: Float
+    let inputTrigger: Int
     let onDrag: (Float) -> Void
 
     @State private var localValue: Float = 0
     @State private var dragActive: Bool = false
+    @State private var inputActive: Bool = false
     @State private var dragEndTask: Task<Void, Never>?
+    @State private var inputEndTask: Task<Void, Never>?
 
     var body: some View {
         // Custom binding so the setter fires *only* on user interaction with
@@ -298,14 +309,14 @@ private struct DimensionFader: View {
                 .frame(width: 22, height: 22)
                 .background(Circle().fill(Color.primary.opacity(0.08)))
 
-            // Red while the user is driving the model (input), green while
-            // the bar is reflecting model output. Matches the IN/OUT LEDs.
+            // Red while the user is driving the model (drag or live MIDI in),
+            // green while the bar is reflecting model output. Matches IN/OUT LEDs.
             SlimParameterBar(
                 value: userBinding,
                 range: 0...1,
                 label: "Dimension \(dimension)",
                 formattedValue: String(format: "%.2f", localValue),
-                tint: dragActive ? .red : .green,
+                tint: userActive ? .red : .green,
                 showsTickWhenIdle: false
             )
 
@@ -313,16 +324,32 @@ private struct DimensionFader: View {
                 .font(.system(.caption, design: .monospaced))
                 .monospacedDigit()
                 .frame(width: 38, alignment: .trailing)
-                .foregroundStyle(dragActive ? .red : .green)
+                .foregroundStyle(userActive ? .red : .green)
         }
         .onChange(of: modelValue) { _, newValue in
-            if !dragActive { localValue = newValue }
+            if !userActive { localValue = newValue }
+        }
+        // Live MIDI in: jump to the received value and show red, exactly as a
+        // drag would. Ignored while the user is dragging — the drag position is
+        // authoritative and the injected MIDI round-trips back here with a lag
+        // that would otherwise stutter the bar.
+        .onChange(of: inputTrigger) { _, _ in
+            guard !dragActive else { return }
+            localValue = inputValue
+            inputActive = true
+            scheduleInputEnd()
         }
         .task(id: dimension) {
             localValue = modelValue
         }
-        .onDisappear { dragEndTask?.cancel() }
+        .onDisappear {
+            dragEndTask?.cancel()
+            inputEndTask?.cancel()
+        }
     }
+
+    /// True whenever the user — not the model — is driving this dimension.
+    private var userActive: Bool { dragActive || inputActive }
 
     /// End the drag (and snap back to the model's value) ~250 ms after the
     /// last user change — the debounce window that lets us handle a stream of
@@ -333,7 +360,19 @@ private struct DimensionFader: View {
             try? await Task.sleep(nanoseconds: 250_000_000)
             guard !Task.isCancelled else { return }
             dragActive = false
-            localValue = modelValue
+            if !inputActive { localValue = modelValue }
+        }
+    }
+
+    /// Mirror of `scheduleDragEnd` for live MIDI input: a stream of mapped
+    /// messages keeps the bar red and tracking until 250 ms after the last one.
+    private func scheduleInputEnd() {
+        inputEndTask?.cancel()
+        inputEndTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 250_000_000)
+            guard !Task.isCancelled else { return }
+            inputActive = false
+            if !dragActive { localValue = modelValue }
         }
     }
 }

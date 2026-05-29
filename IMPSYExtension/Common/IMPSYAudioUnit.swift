@@ -189,11 +189,11 @@ public final class IMPSYAudioUnit: AUAudioUnit {
                 ]
             )
         }
-        engine.onUserInputReceived = { [weak self] dim in
+        engine.onUserInputReceived = { [weak self] dim, value in
             NotificationCenter.default.post(
                 name: .IMPSYUserInputReceived,
                 object: self,
-                userInfo: ["dimension": dim]
+                userInfo: ["dimension": dim, "value": value]
             )
         }
     }
