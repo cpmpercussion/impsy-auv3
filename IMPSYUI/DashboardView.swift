@@ -143,6 +143,8 @@ struct DashboardView: View {
                                 ? viewModel.inputValues[i] : 0,
                             inputTrigger: viewModel.inputDimensionCounts.indices.contains(i)
                                 ? viewModel.inputDimensionCounts[i] : 0,
+                            outputTrigger: viewModel.outputDimensionCounts.indices.contains(i)
+                                ? viewModel.outputDimensionCounts[i] : 0,
                             onDrag: { value in
                                 viewModel.injectInput(dimensionIndex: i, value: value)
                             }
@@ -278,6 +280,7 @@ private struct DimensionFader: View {
     let modelValue: Float
     let inputValue: Float
     let inputTrigger: Int
+    let outputTrigger: Int
     let onDrag: (Float) -> Void
 
     @State private var localValue: Float = 0
@@ -304,10 +307,14 @@ private struct DimensionFader: View {
         )
 
         return HStack(spacing: 8) {
-            Text("\(dimension)")
-                .font(.system(.caption, design: .monospaced, weight: .semibold))
-                .frame(width: 22, height: 22)
-                .background(Circle().fill(Color.primary.opacity(0.08)))
+            // Numbered LED badge — red flash on user input (live MIDI in or
+            // slider drag, which loops back through inputTrigger via the
+            // engine's input buffer), green flash on RNN output. Same flash
+            // timing as the per-dim activity LEDs and mapping-row badges.
+            DimensionBadge(dimensionIndex: dimension,
+                           enabled: true,
+                           inputTrigger:  inputTrigger,
+                           outputTrigger: outputTrigger)
 
             // Red while the user is driving the model (drag or live MIDI in),
             // green while the bar is reflecting model output. Matches IN/OUT LEDs.

@@ -30,7 +30,6 @@ struct MappingEditorView: View {
             // rows past the model dim never flash).
             let counts = isInput ? viewModel.inputDimensionCounts
                                  : viewModel.outputDimensionCounts
-            let accent: Color = isInput ? .red : .green
 
             // Master "all on / all off" toggle. Tri-state: if any row is
             // disabled, ticking it re-enables everything; if all rows are
@@ -50,12 +49,13 @@ struct MappingEditorView: View {
             // nesting vertical scroll views fights for the drag gesture.
             VStack(spacing: 6) {
                 ForEach(mappings.indices, id: \.self) { idx in
+                    let rowTrigger = counts.indices.contains(idx) ? counts[idx] : 0
                     MappingRow(
                         dimensionIndex: idx + 1,
                         isFirst: idx == 0,
                         isLast: idx == mappings.count - 1,
-                        activityTrigger: counts.indices.contains(idx) ? counts[idx] : 0,
-                        accentColor: accent,
+                        inputActivityTrigger:  isInput ? rowTrigger : 0,
+                        outputActivityTrigger: isInput ? 0 : rowTrigger,
                         mapping: binding(at: idx, isInput: isInput),
                         onMoveUp:   { viewModel.moveMapping(isInput: isInput, from: idx, to: idx - 1) },
                         onMoveDown: { viewModel.moveMapping(isInput: isInput, from: idx, to: idx + 1) },
@@ -129,15 +129,20 @@ struct MappingEditorView: View {
 
 // MARK: - Dimension Badge
 
-/// The dim-number pill in each mapping row. Holds an LED-style flash that
-/// mirrors the dashboard's per-dim activity indicators — same timing
-/// (40 ms hold, 250 ms fade) so the two surfaces feel like the same instrument.
-private struct DimensionBadge: View {
+/// The dim-number pill: a numbered circle that flashes red when input arrives
+/// on this dimension and green when the model emits output on it. Used by
+/// the mapping rows (only one trigger non-zero at a time, depending on which
+/// tab is active) and by the dashboard's Direct Input faders (both triggers
+/// live, so a row can show red call-flashes and green response-flashes on the
+/// same circle). 40 ms hold + 250 ms fade; the most recent flash colour wins
+/// if both triggers fire in the same window.
+struct DimensionBadge: View {
     let dimensionIndex: Int
     let enabled: Bool
-    let trigger: Int
-    let accent: Color
+    let inputTrigger: Int
+    let outputTrigger: Int
     @State private var lit = false
+    @State private var litColor: Color = .red
 
     var body: some View {
         Text("\(dimensionIndex)")
@@ -145,18 +150,20 @@ private struct DimensionBadge: View {
             .foregroundStyle(lit ? Color.white : Color.primary)
             .frame(width: 22, height: 22)
             .background(
-                Circle().fill(lit ? accent : Color.primary.opacity(0.08))
+                Circle().fill(lit ? litColor : Color.primary.opacity(0.08))
             )
             .overlay(
-                Circle().strokeBorder(accent.opacity(lit ? 0.7 : 0), lineWidth: 0.6)
+                Circle().strokeBorder(litColor.opacity(lit ? 0.7 : 0), lineWidth: 0.6)
             )
-            .shadow(color: lit ? accent : .clear, radius: lit ? 4 : 0)
+            .shadow(color: lit ? litColor : .clear, radius: lit ? 4 : 0)
             .opacity(enabled ? 1 : 0.4)
-            .onChange(of: trigger) { _, _ in flash() }
+            .onChange(of: inputTrigger)  { _, _ in flash(.red) }
+            .onChange(of: outputTrigger) { _, _ in flash(.green) }
             .accessibilityHidden(true)
     }
 
-    private func flash() {
+    private func flash(_ color: Color) {
+        litColor = color
         lit = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.04) {
             withAnimation(.easeOut(duration: 0.25)) { lit = false }
@@ -170,8 +177,8 @@ private struct MappingRow: View {
     let dimensionIndex: Int
     let isFirst: Bool
     let isLast: Bool
-    let activityTrigger: Int
-    let accentColor: Color
+    let inputActivityTrigger: Int
+    let outputActivityTrigger: Int
     @Binding var mapping: DimensionMapping
     let onMoveUp: () -> Void
     let onMoveDown: () -> Void
@@ -186,12 +193,12 @@ private struct MappingRow: View {
             EnableCheckbox(isOn: $mapping.enabled)
                 .accessibilityIdentifier("mapping.row.\(dimensionIndex).enabled")
 
-            // Dimension badge — pulses with the same LED feel as the dashboard
-            // activity indicators on each MIDI event for this dim.
+            // Dimension badge — pulses red on input, green on output, same as
+            // the dashboard's Direct Input faders.
             DimensionBadge(dimensionIndex: dimensionIndex,
                            enabled: mapping.enabled,
-                           trigger: activityTrigger,
-                           accent: accentColor)
+                           inputTrigger:  inputActivityTrigger,
+                           outputTrigger: outputActivityTrigger)
 
             // Message type. A Menu with a custom label (rather than a .menu
             // Picker) is used because Picker ignores .font / .lineLimit on its
