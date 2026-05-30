@@ -505,13 +505,13 @@
       <div class="col-md-6 col-lg-4">
         <div class="feature-card">
           <h3>iOS &amp; iPadOS 17</h3>
-          <p>AUM, AudioBus, Cubasis, and any AUv3 host that loads MIDI Processor (<code>aumi</code>) plugins. Plays nicely with hardware MIDI controllers over USB or Bluetooth.</p>
+          <p>AUM is the reference <code>aumi</code> host. Also loads in Loopy Pro, Drambo, apeMatrix, Cubasis 3, AudioBus 3, BeatMaker 3, Auria Pro, and Logic Pro for iPad. Plays nicely with hardware MIDI over USB or Bluetooth.</p>
         </div>
       </div>
       <div class="col-md-6 col-lg-4">
         <div class="feature-card">
           <h3>macOS 14 (Apple Silicon)</h3>
-          <p>Logic Pro and MainStage. Loads in the MIDI FX slot, between your controller and your instrument tracks.</p>
+          <p>Logic Pro and MainStage load IMPSY in the MIDI FX slot. Reaper added AUv3 MIDI Processor support in 7.55 (Nov 2025). Loopy Pro, Drambo, apeMatrix and Hosting AU also work as <code>aumi</code> hosts on macOS.</p>
         </div>
       </div>
       <div class="col-md-6 col-lg-4">
@@ -582,10 +582,10 @@
           <dd>If your controller is already routed to a synth in the DAW, turn MIDI Thru off so IMPSY only adds the model's responses. If IMPSY is the only thing reaching the synth, leave it on.</dd>
 
           <dt>Does it work in Ableton Live?</dt>
-          <dd>No. Live 11.2+ hosts AUv3 instruments and audio effects, but it has never hosted AU <em>MIDI effect</em> plugins — IMPSY is an AUv3 MIDI Processor (<code>aumi</code>), so Live won't see it. IMPSY is developed and tested in Logic Pro; MainStage, AUM, Cubasis, and AudioBus also host <code>aumi</code> plugins.</dd>
+          <dd>No. Live 11.2+ hosts AUv3 instruments and audio effects, but it has never hosted AU <em>MIDI effect</em> plugins — IMPSY is an AUv3 MIDI Processor (<code>aumi</code>), so Live won't see it. IMPSY is developed and tested in Logic Pro; MainStage, Reaper (7.55+), AUM, Loopy Pro, Drambo, apeMatrix, Cubasis, and AudioBus also host <code>aumi</code> plugins.</dd>
 
           <dt>What about GarageBand?</dt>
-          <dd>GarageBand on iOS does not load AUv3 MIDI Processor plugins (it only shows AUv3 instruments and audio effects) — Apple has never added <code>aumi</code> hosting to it. Use AUM or Cubasis on iOS for IMPSY instead.</dd>
+          <dd>GarageBand on iOS and macOS does not load AUv3 MIDI Processor plugins (it only shows AUv3 instruments and audio effects) — Apple has never added <code>aumi</code> hosting to it. Use AUM, Loopy Pro, or Cubasis on iOS for IMPSY instead.</dd>
 
           <dt>Intel Mac support?</dt>
           <dd>macOS support is Apple Silicon only. The TensorFlow Lite C runtime is not currently shipped as a stable Intel prebuilt.</dd>
