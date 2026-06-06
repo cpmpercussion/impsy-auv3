@@ -103,12 +103,26 @@ final class CoreMIDIBridge {
     }
 
     private func setEndpointProperties(_ endpoint: MIDIEndpointRef, uid: String) {
-        // A stable UID lets DAWs remember routing across launches. The string
-        // form is hashed into the kMIDIPropertyUniqueID Int32 property.
-        let uidInt: Int32 = Int32(truncatingIfNeeded: uid.hashValue)
-        MIDIObjectSetIntegerProperty(endpoint, kMIDIPropertyUniqueID, uidInt)
+        // A stable UID lets DAWs remember routing across launches. Swift's
+        // String.hashValue is seeded randomly per process, so it can't be used
+        // here — it would yield a different UID every launch. Hash the bytes
+        // deterministically (FNV-1a) into the kMIDIPropertyUniqueID Int32 instead.
+        MIDIObjectSetIntegerProperty(endpoint, kMIDIPropertyUniqueID, Self.stableUID(uid))
         MIDIObjectSetStringProperty(endpoint, kMIDIPropertyManufacturer, "Charles Martin" as CFString)
         MIDIObjectSetStringProperty(endpoint, kMIDIPropertyModel, "IMPSY" as CFString)
+    }
+
+    /// Deterministic 32-bit FNV-1a hash of a string, used as a stable CoreMIDI
+    /// UID. Unlike `String.hashValue` this is identical across process launches.
+    private static func stableUID(_ string: String) -> Int32 {
+        var hash: UInt32 = 0x811c_9dc5            // FNV offset basis
+        for byte in string.utf8 {
+            hash ^= UInt32(byte)
+            hash = hash &* 0x0100_0193            // FNV prime
+        }
+        // kMIDIPropertyUniqueID is Int32 and must be non-zero; FNV-1a of a
+        // non-empty string is never the offset basis alone, so this is safe.
+        return Int32(bitPattern: hash)
     }
 
     // MARK: - Input path (DAW → engine)
