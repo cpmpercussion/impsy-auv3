@@ -181,6 +181,10 @@ extension IMPSYAudioUnit {
                                                        "config": config,
                                                        "name": url.lastPathComponent])
         } catch {
+            // Log as well as notify: if no observer is attached yet (e.g. the
+            // view model connects asynchronously after launch) the
+            // notification is lost and the failure would otherwise be silent.
+            NSLog("[IMPSY] loadModel failed for %@: %@", url.path, String(describing: error))
             NotificationCenter.default.post(name: .IMPSYModelStatusChanged, object: self,
                                             userInfo: ["status": "error", "message": error.localizedDescription])
         }
