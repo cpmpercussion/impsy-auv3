@@ -69,6 +69,12 @@ final class HostWindowController: NSWindowController {
 
             let vc = IMPSYViewController()
             vc.audioUnit = au
+            // Surface MIDI device pickers (#29) on the Settings screen.
+            if let bridge = midiBridge {
+                let store = MIDIEndpointStore()
+                bridge.attach(store: store)
+                vc.midiEndpointStore = store
+            }
             auViewController = vc
             // Set the window's contentView directly rather than via
             // `contentViewController`. The VC route auto-binds the window's

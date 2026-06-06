@@ -107,6 +107,13 @@ public final class IMPSYViewController: AUViewController, AUAudioUnitFactory {
         }
     }
 
+    /// Set by the standalone hosts to surface MIDI device pickers on the
+    /// Settings screen (#29). Never set in the AUv3 extension. Internal:
+    /// host and UI sources compile into the same target.
+    var midiEndpointStore: MIDIEndpointStore? {
+        didSet { viewModel.midiEndpointStore = midiEndpointStore }
+    }
+
     public override func viewDidLoad() {
         super.viewDidLoad()
         let mainView = IMPSYMainView(viewModel: viewModel)
@@ -150,6 +157,13 @@ public final class IMPSYViewController: AUViewController, AUAudioUnitFactory {
                 self.viewModel.audioUnit = self.audioUnit
             }
         }
+    }
+
+    /// Set by the standalone hosts to surface MIDI device pickers on the
+    /// Settings screen (#29). Never set in the AUv3 extension. Internal:
+    /// host and UI sources compile into the same target.
+    var midiEndpointStore: MIDIEndpointStore? {
+        didSet { viewModel.midiEndpointStore = midiEndpointStore }
     }
 
     public override func viewDidLoad() {

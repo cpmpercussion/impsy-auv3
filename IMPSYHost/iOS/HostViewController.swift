@@ -62,6 +62,10 @@ final class HostViewController: UIViewController {
 
             let vc = IMPSYViewController()
             vc.audioUnit = au
+            // Surface MIDI device pickers (#29) on the Settings screen.
+            let store = MIDIEndpointStore()
+            bridge.attach(store: store)
+            vc.midiEndpointStore = store
             statusLabel.removeFromSuperview()
             embed(viewController: vc)
             HostTestHooks.apply(to: au)
