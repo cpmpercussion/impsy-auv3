@@ -73,21 +73,13 @@ Custom models
 
 IMPSY ships with a default 9-dimensional model trained for general musical interaction, but you can load any .tflite model trained with the open-source IMPSY research toolkit: synths, drum machines, lighting rigs, or anything that speaks MIDI.
 
-Accessibility
-
-IMPSY is built to work with VoiceOver and Dynamic Type. Every control is labelled, the sliders are adjustable by VoiceOver, and status shows as text, not colour alone. Full statement: charlesmartin.au/impsy-auv3/accessibility.html
-
 Compatibility
 
 • AUv3 MIDI Processor, no audio I/O
-• Hosts in AUM, AudioBus, Cubasis and Logic Pro for iPad
+• Hosts in AUM, AudioBus, Cubasis and Logic Pro for iPad, or any other AUv3 host that supports midi processors.
 • Also runs standalone with Core MIDI virtual ports and direct device connection
 • Requires iOS 17
 • MIDI stays on-device. No network, no telemetry
-
-Credits
-
-IMPSY is research software from Charles Patrick Martin (ANU School of Computing). The underlying IMPSY framework is open source at github.com/cpmpercussion/impsy.
 ```
 
 ### macOS
@@ -117,10 +109,6 @@ Custom models
 
 IMPSY ships with a default 9-dimensional model trained for general musical interaction, but you can load any .tflite model trained with the open-source IMPSY research toolkit: synths, drum machines, lighting rigs, or anything that speaks MIDI.
 
-Accessibility
-
-IMPSY is built to work with VoiceOver and Dynamic Type. Every control is labelled, the sliders are adjustable by VoiceOver, and status shows as text, not colour alone. Full statement: charlesmartin.au/impsy-auv3/accessibility.html
-
 Compatibility
 
 • AUv3 MIDI Processor, no audio I/O
@@ -128,10 +116,6 @@ Compatibility
 • Standalone app with Core MIDI virtual ports works alongside any DAW, including Ableton Live; connect hardware or IAC MIDI devices directly
 • Requires macOS 14 on an Apple Silicon Mac
 • MIDI stays on-device. No network, no telemetry
-
-Credits
-
-IMPSY is research software from Charles Patrick Martin (ANU School of Computing). The underlying IMPSY framework is open source at github.com/cpmpercussion/impsy.
 ```
 
 ## Keywords (100-char limit, no spaces after commas)
