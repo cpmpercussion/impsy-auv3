@@ -84,7 +84,7 @@ enum MDNSampler {
         let maxVal = scaled.max() ?? 0
         scaled = scaled.map { $0 - maxVal }
 
-        var exps = scaled.map { expf($0) }
+        let exps = scaled.map { expf($0) }
         let sum  = exps.reduce(0, +)
         guard sum > 0 else {
             // Uniform fallback

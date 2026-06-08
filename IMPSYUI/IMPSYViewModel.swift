@@ -162,7 +162,11 @@ final class IMPSYViewModel: ObservableObject {
             object: au,
             queue: .main
         ) { [weak self] note in
-            self?.handleModelStatusNotification(note)
+            // Delivered on .main, but NotificationCenter closures are Sendable,
+            // so the compiler can't see the isolation — assert it explicitly.
+            MainActor.assumeIsolated {
+                self?.handleModelStatusNotification(note)
+            }
         }
 
         // Listen for call-response state changes
@@ -171,7 +175,9 @@ final class IMPSYViewModel: ObservableObject {
             object: au,
             queue: .main
         ) { [weak self] note in
-            self?.callResponseState = (note.userInfo?["state"] as? String) ?? "CALL"
+            MainActor.assumeIsolated {
+                self?.callResponseState = (note.userInfo?["state"] as? String) ?? "CALL"
+            }
         }
 
         // Listen for generated events (live activity feedback)
@@ -180,19 +186,21 @@ final class IMPSYViewModel: ObservableObject {
             object: au,
             queue: .main
         ) { [weak self] note in
-            guard let self else { return }
-            self.generatedEventCount += 1
-            self.lastEventSummary = (note.userInfo?["summary"] as? String) ?? "—"
-            self.lastEventDt = (note.userInfo?["dt"] as? Double) ?? 0
-            if let dims = note.userInfo?["dimensions"] as? [Int] {
-                for dim in dims where self.outputDimensionCounts.indices.contains(dim) {
-                    self.outputDimensionCounts[dim] += 1
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.generatedEventCount += 1
+                self.lastEventSummary = (note.userInfo?["summary"] as? String) ?? "—"
+                self.lastEventDt = (note.userInfo?["dt"] as? Double) ?? 0
+                if let dims = note.userInfo?["dimensions"] as? [Int] {
+                    for dim in dims where self.outputDimensionCounts.indices.contains(dim) {
+                        self.outputDimensionCounts[dim] += 1
+                    }
                 }
-            }
-            if let values = note.userInfo?["values"] as? [Float] {
-                for (i, v) in values.enumerated()
-                    where self.outputValues.indices.contains(i) {
-                    self.outputValues[i] = v
+                if let values = note.userInfo?["values"] as? [Float] {
+                    for (i, v) in values.enumerated()
+                        where self.outputValues.indices.contains(i) {
+                        self.outputValues[i] = v
+                    }
                 }
             }
         }
@@ -203,14 +211,16 @@ final class IMPSYViewModel: ObservableObject {
             object: au,
             queue: .main
         ) { [weak self] note in
-            guard let self else { return }
-            self.inputEventCount += 1
-            if let dim = note.userInfo?["dimension"] as? Int,
-               self.inputDimensionCounts.indices.contains(dim) {
-                self.inputDimensionCounts[dim] += 1
-                if let value = note.userInfo?["value"] as? Float,
-                   self.inputValues.indices.contains(dim) {
-                    self.inputValues[dim] = value
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.inputEventCount += 1
+                if let dim = note.userInfo?["dimension"] as? Int,
+                   self.inputDimensionCounts.indices.contains(dim) {
+                    self.inputDimensionCounts[dim] += 1
+                    if let value = note.userInfo?["value"] as? Float,
+                       self.inputValues.indices.contains(dim) {
+                        self.inputValues[dim] = value
+                    }
                 }
             }
         }
@@ -221,7 +231,9 @@ final class IMPSYViewModel: ObservableObject {
             object: au,
             queue: .main
         ) { [weak self] note in
-            self?.logFolderPath = note.userInfo?["path"] as? String
+            MainActor.assumeIsolated {
+                self?.logFolderPath = note.userInfo?["path"] as? String
+            }
         }
 
         notificationTokens = [modelToken, stateToken, eventToken, inputToken, logFolderToken]

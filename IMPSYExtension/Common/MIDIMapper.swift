@@ -18,7 +18,7 @@ struct MIDIEvent {
 
     /// Returns raw bytes for use with midiOutputEventBlock
     func withBytes<T>(_ body: (UnsafePointer<UInt8>, Int) -> T) -> T {
-        var bytes: [UInt8] = [statusByte, data1, data2]
+        let bytes: [UInt8] = [statusByte, data1, data2]
         return bytes.withUnsafeBufferPointer { buf in
             body(buf.baseAddress!, byteCount)
         }
