@@ -10,13 +10,23 @@ import CoreAudioKit
 
 public struct IMPSYMainView: View {
     @ObservedObject var viewModel: IMPSYViewModel
-    @State private var screen: Screen = .dashboard
+    @State private var screen: Screen = IMPSYMainView.initialScreen
 
     enum Screen: String, CaseIterable, Identifiable {
         case dashboard = "Dashboard"
         case settings  = "Settings"
         case mapping   = "Mapping"
         var id: String { rawValue }
+    }
+
+    /// Screenshot-capture only: open straight to a screen (`IMPSY_TEST_SCREEN`).
+    /// Unset in production → Dashboard, as before.
+    private static var initialScreen: Screen {
+        switch ProcessInfo.processInfo.environment["IMPSY_TEST_SCREEN"] {
+        case "settings": return .settings
+        case "mapping":  return .mapping
+        default:         return .dashboard
+        }
     }
 
     init(viewModel: IMPSYViewModel) {
@@ -170,6 +180,14 @@ public final class IMPSYViewController: AUViewController, AUAudioUnitFactory {
         super.viewDidLoad()
         let mainView = IMPSYMainView(viewModel: viewModel)
         let hc = NSHostingController(rootView: mainView)
+        // Screenshot capture only: force the window's appearance so one test
+        // run can grab both light and dark. Unset in production → nil → the
+        // window follows the system as usual.
+        switch ProcessInfo.processInfo.environment["IMPSY_TEST_APPEARANCE"] {
+        case "dark":  hc.view.appearance = NSAppearance(named: .darkAqua)
+        case "light": hc.view.appearance = NSAppearance(named: .aqua)
+        default:      break
+        }
         // Stop NSHostingController from propagating SwiftUI's ideal size up
         // into the host VC and NSWindow. With the default `.preferredContentSize`
         // option active, the window's content min/max gets pinned to the

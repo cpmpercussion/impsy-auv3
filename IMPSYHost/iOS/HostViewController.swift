@@ -74,8 +74,12 @@ final class HostViewController: UIViewController {
             print("[IMPSY] AU init failed: \(error)")
         }
 
-        setupProbeBanner()
-        probeOutOfProcess(desc: desc)
+        // The out-of-process probe banner is a dev diagnostic; suppress it for
+        // screenshot capture so it doesn't sit over the header.
+        if ProcessInfo.processInfo.environment["IMPSY_TEST_HIDE_PROBE"] != "1" {
+            setupProbeBanner()
+            probeOutOfProcess(desc: desc)
+        }
     }
 
     // MARK: - Out-of-process probe (reproduces the AUM path)

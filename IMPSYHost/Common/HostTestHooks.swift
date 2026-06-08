@@ -51,8 +51,11 @@ enum HostTestHooks {
             NSLog("[IMPSY] HostTestHooks: %@ is not valid base64", modelB64Key)
             return
         }
+        // Realistic-looking filename: it surfaces verbatim as the model name in
+        // the UI (and in App Store screenshots). Tests assert on dimension, not
+        // this name.
         let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("ui-test-model.tflite")
+            .appendingPathComponent("musicMDRNN.tflite")
         do {
             try data.write(to: url)
             au.loadModel(url: url)
