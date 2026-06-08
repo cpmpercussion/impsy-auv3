@@ -1,7 +1,9 @@
 # App Store Connect listing — draft
 
 Working draft of the text to enter into App Store Connect for IMPSY.
-The iOS and macOS app records share this text.
+The two platforms share the identity fields (name, bundle ID, SKU) but get
+distinct Description, Promotional text and Keywords — the host stories differ
+(iOS music apps vs Mac DAWs, plus the Mac standalone-into-Ableton route).
 
 ## Identity
 
@@ -30,48 +32,102 @@ One App Store Connect app record, both platforms (iOS + macOS) selected in the N
 
 ## Promotional text (170 chars, editable post-release without re-review)
 
+### iOS
+
 ```
-A live duet between you and a neural network. Send MIDI from any keyboard, get back improvised musical responses — straight into your DAW.
+Jam with a neural network on iPad and iPhone. Play any MIDI controller into IMPSY in AUM, Cubasis or Logic, and it improvises responses back into your set.
+```
+
+### macOS
+
+```
+A neural-network MIDI partner for the Mac studio. Run it in Logic Pro and MainStage, or route any DAW (Ableton included) through its Core MIDI virtual ports.
 ```
 
 ## Description
 
-```
-Jam with an AI MIDI partner.
+### iOS
 
-IMPSY listens to what you play and improvises musical responses. Load it as an AUv3 MIDI Processor in Logic Pro, MainStage, AUM, AudioBus or Cubasis, send it MIDI from any keyboard or controller, and route its output to any instrument. Or run the standalone app and plug your MIDI gear straight in — IMPSY also appears as Core MIDI virtual ports (IMPSY In / IMPSY Out), so you can route through it from DAWs that don't host AUv3 MIDI plug-ins, including Ableton Live, or play it with no DAW at all. Either way it's a live duet between you and a neural network trained on musical performances.
+```
+Jam with an AI MIDI partner on iPad and iPhone.
+
+IMPSY listens to what you play and improvises musical responses. Load it as an AUv3 MIDI Processor in AUM, AudioBus, Cubasis or Logic Pro for iPad, play it from a USB or Bluetooth controller (or the on-screen faders), and route its output to any instrument app. IMPSY also runs on its own: it appears as Core MIDI virtual ports (IMPSY In / IMPSY Out) and connects directly to a plugged-in controller, so you can play it without a DAW.
 
 How it works
 
-IMPSY runs a Mixture Density Recurrent Neural Network (MDRNN) on-device. Every note, control change or pitch-bend you send becomes input to the model, which predicts what should happen next — including the timing of the response. Shape the conversation with:
+IMPSY runs a Mixture Density Recurrent Neural Network (MDRNN) on-device. Every note, control change or pitch-bend you send becomes input to the model, which predicts what comes next, including the timing of the response. Shape the conversation with:
 
-• Threshold — how long IMPSY waits between your input and its reply
-• Sigma Temperature — randomness of pitch / control values
-• Pi Temperature — randomness of which musical "idea" the model chooses
-• Timescale — speeds up or slows down the response
-• MIDI Thru — pass your own playing through to the output alongside IMPSY's
+• Threshold: how long IMPSY waits between your input and its reply
+• Sigma Temperature: randomness of pitch and control values
+• Pi Temperature: randomness of which musical "idea" the model picks
+• Timescale: speeds up or slows down the response
+• MIDI Thru: passes your own playing through to the output alongside IMPSY's
 
 Connect anything
 
-• Map each model dimension to any MIDI message — notes, CCs or pitch-bend — on any channel, independently for input and output
-• Connect hardware or IAC MIDI devices directly in the standalone app, or use the always-on IMPSY In / IMPSY Out virtual ports
+• Map each model dimension to any MIDI message (notes, CCs or pitch-bend) on any channel, independently for input and output
+• Connect a controller directly, or use the always-on IMPSY In / IMPSY Out virtual ports
 • Import and export your mappings as TOML, compatible with the IMPSY Python toolkit
 
 Custom models
 
-IMPSY ships with a default 9-dimensional model trained for general musical interaction, but you can load any .tflite model trained with the open-source IMPSY research toolkit — for synths, drum machines, lighting rigs, or anything that speaks MIDI.
+IMPSY ships with a default 9-dimensional model trained for general musical interaction, but you can load any .tflite model trained with the open-source IMPSY research toolkit: synths, drum machines, lighting rigs, or anything that speaks MIDI.
 
 Accessibility
 
-IMPSY is built to work with VoiceOver and Dynamic Type: every control is labelled, the sliders are adjustable by VoiceOver, and status is conveyed with text, not colour alone. Full statement: charlesmartin.au/impsy-auv3/accessibility.html
+IMPSY is built to work with VoiceOver and Dynamic Type. Every control is labelled, the sliders are adjustable by VoiceOver, and status shows as text, not colour alone. Full statement: charlesmartin.au/impsy-auv3/accessibility.html
 
 Compatibility
 
-• AUv3 MIDI Processor — no audio I/O
-• Developed and tested in Logic Pro; also hosts as an AUv3 MIDI Processor (aumi) in MainStage, AUM, AudioBus and Cubasis
-• Standalone app with Core MIDI virtual ports works alongside any DAW, including Ableton Live
-• Requires iOS 17, or macOS 14 on an Apple Silicon Mac
-• MIDI stays on-device — no network, no telemetry
+• AUv3 MIDI Processor, no audio I/O
+• Hosts in AUM, AudioBus, Cubasis and Logic Pro for iPad
+• Also runs standalone with Core MIDI virtual ports and direct device connection
+• Requires iOS 17
+• MIDI stays on-device. No network, no telemetry
+
+Credits
+
+IMPSY is research software from Charles Patrick Martin (ANU School of Computing). The underlying IMPSY framework is open source at github.com/cpmpercussion/impsy.
+```
+
+### macOS
+
+```
+Jam with an AI MIDI partner on your Mac.
+
+IMPSY listens to what you play and improvises musical responses. Load it as an AUv3 MIDI Processor in Logic Pro or MainStage, or run the standalone app and plug your MIDI gear straight in. Because the standalone app appears as Core MIDI virtual ports (IMPSY In / IMPSY Out), you can route through IMPSY from any DAW, including ones that don't host AUv3 MIDI plug-ins such as Ableton Live, or play it without a DAW.
+
+How it works
+
+IMPSY runs a Mixture Density Recurrent Neural Network (MDRNN) on-device. Every note, control change or pitch-bend you send becomes input to the model, which predicts what comes next, including the timing of the response. Shape the conversation with:
+
+• Threshold: how long IMPSY waits between your input and its reply
+• Sigma Temperature: randomness of pitch and control values
+• Pi Temperature: randomness of which musical "idea" the model picks
+• Timescale: speeds up or slows down the response
+• MIDI Thru: passes your own playing through to the output alongside IMPSY's
+
+Connect anything
+
+• Map each model dimension to any MIDI message (notes, CCs or pitch-bend) on any channel, independently for input and output
+• Connect hardware or IAC MIDI devices directly, or use the always-on IMPSY In / IMPSY Out virtual ports
+• Import and export your mappings as TOML, compatible with the IMPSY Python toolkit
+
+Custom models
+
+IMPSY ships with a default 9-dimensional model trained for general musical interaction, but you can load any .tflite model trained with the open-source IMPSY research toolkit: synths, drum machines, lighting rigs, or anything that speaks MIDI.
+
+Accessibility
+
+IMPSY is built to work with VoiceOver and Dynamic Type. Every control is labelled, the sliders are adjustable by VoiceOver, and status shows as text, not colour alone. Full statement: charlesmartin.au/impsy-auv3/accessibility.html
+
+Compatibility
+
+• AUv3 MIDI Processor, no audio I/O
+• Hosts in Logic Pro and MainStage
+• Standalone app with Core MIDI virtual ports works alongside any DAW, including Ableton Live; connect hardware or IAC MIDI devices directly
+• Requires macOS 14 on an Apple Silicon Mac
+• MIDI stays on-device. No network, no telemetry
 
 Credits
 
@@ -80,10 +136,17 @@ IMPSY is research software from Charles Patrick Martin (ANU School of Computing)
 
 ## Keywords (100-char limit, no spaces after commas)
 
+### iOS
+
 ```
-AUv3,MIDI,AI,neural,improvisation,generative,music,MDRNN,Ableton,Logic,AUM,synth,plugin,standalone
+AUv3,MIDI,AI,improvisation,generative,music,MDRNN,AUM,AudioBus,Cubasis,synth,iPad,plugin
 ```
-98 characters used (limit 100).
+
+### macOS
+
+```
+AUv3,MIDI,AI,improvisation,generative,music,MDRNN,Ableton,Logic,MainStage,synth,standalone,IAC
+```
 
 ## What's New in This Version (170 chars, per build)
 
