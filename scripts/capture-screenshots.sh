@@ -113,17 +113,29 @@ SWIFT
   pkill -f "IMPSY.app/Contents/MacOS/IMPSY" 2>/dev/null || true
 
   # 3-up 16:10 mockup (Dashboard · Settings · Mapping) per appearance, for the
-  # Mac App Store (which requires 16:10). Hairline border + branded canvas so
-  # the windows separate cleanly from the background.
+  # Mac App Store (which requires 16:10). Each window keeps its transparent
+  # rounded corners and gets an alpha-aware soft shadow (NOT a rectangular
+  # border, which would leave a lighter square at each rounded corner). Windows
+  # are centered as a group, so positions are derived from the shadowed size.
   for ap in light dark; do
-    local bg bc
-    if [ "$ap" = dark ]; then bg='#2b5230'; bc='rgba(255,255,255,0.16)'
-    else                      bg='#fbf8ee'; bc='rgba(0,0,0,0.10)'; fi
+    local bg sh tmpd s i W H G total startx y x0 x1 x2
+    if [ "$ap" = dark ]; then bg='#2b5230'; sh='55x16+0+10'
+    else                      bg='#fbf8ee'; sh='40x14+0+10'; fi
+    tmpd="$(mktemp -d)"; i=0
+    for s in dashboard settings mapping; do
+      magick "$OUT/macos/impsy-$ap-$s.png" -resize x1360 \
+        \( +clone -background black -shadow "$sh" \) +swap -background none -layers merge +repage \
+        "$tmpd/w$i.png"; i=$((i+1))
+    done
+    read W H < <(magick identify -format "%w %h" "$tmpd/w0.png")
+    G=64; total=$((3*W + 2*G)); startx=$(((2880-total)/2)); y=$(((1800-H)/2))
+    x0=$startx; x1=$((startx+W+G)); x2=$((startx+2*(W+G)))
     magick -size 2880x1800 "xc:$bg" \
-      \( "$OUT/macos/impsy-$ap-dashboard.png" -resize x1400 -bordercolor "$bc" -border 2 \) -gravity northwest -geometry +56+200 -composite \
-      \( "$OUT/macos/impsy-$ap-settings.png"  -resize x1400 -bordercolor "$bc" -border 2 \) -gravity northwest -geometry +1005+200 -composite \
-      \( "$OUT/macos/impsy-$ap-mapping.png"   -resize x1400 -bordercolor "$bc" -border 2 \) -gravity northwest -geometry +1954+200 -composite \
+      "$tmpd/w0.png" -geometry "+$x0+$y" -composite \
+      "$tmpd/w1.png" -geometry "+$x1+$y" -composite \
+      "$tmpd/w2.png" -geometry "+$x2+$y" -composite \
       "$OUT/macos-appstore/impsy-macos-trio-$ap.png"
+    rm -rf "$tmpd"
   done
 }
 
