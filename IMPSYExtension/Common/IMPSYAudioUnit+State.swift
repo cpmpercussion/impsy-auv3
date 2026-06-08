@@ -240,7 +240,12 @@ extension IMPSYAudioUnit {
     // MARK: - Private Helpers
 
     private func buildFullState() -> [String: Any] {
-        var state: [String: Any] = [:]
+        // Start from the base AUAudioUnit dictionary so Apple's component
+        // identity keys (componentType / componentSubType / componentManufacturer
+        // / version / data) are present. auval's "Class Data" check requires
+        // them; building a fresh [:] omitted them and tripped AU VALIDATION
+        // FAILED (see Known issues in CLAUDE.md). Our keys are merged on top.
+        var state = super.fullState ?? [:]
 
         if let bookmark = _modelBookmarkData {
             state[StateKey.modelBookmark] = bookmark
