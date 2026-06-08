@@ -9,12 +9,13 @@
 # the Mac App Store (which requires 16:10).
 #
 # Output: $OUT (default /tmp/impsy-screenshots)
-#   iphone/   1320x2868  impsy-{light,dark}-{dashboard,settings,mapping}.png
-#   ipad/     2064x2752  …
-#   macos/    window captures
+#   iphone/     1320x2868  impsy-{light,dark}-{dashboard,settings,mapping}.png  (6.9" slot)
+#   iphone-6.5/ 1284x2778  …  (6.5" slot — some App Store Connect setups require this)
+#   ipad/       2064x2752  …
+#   macos/      window captures
 #   macos-appstore/  2880x1800 (16:10) composites
 #
-# Usage: ./scripts/capture-screenshots.sh [all|iphone|ipad|macos]   (default all)
+# Usage: ./scripts/capture-screenshots.sh [all|iphone|iphone65|ipad|macos]  (default all)
 #
 # Must run from an interactive GUI session (XCUITest needs the automation
 # handshake); the runner may time out enabling automation — just re-run.
@@ -25,6 +26,7 @@ cd "$(dirname "$0")/.."
 PROJ="IMPSY-AUv3.xcodeproj"
 OUT="${OUT:-/tmp/impsy-screenshots}"
 IPHONE_TYPE="${IPHONE_TYPE:-iPhone 17 Pro Max}"      # 6.9" -> 1320x2868
+IPHONE_6_5_TYPE="${IPHONE_6_5_TYPE:-iPhone 14 Plus}" # 6.5" slot -> 1284x2778
 IPAD_TYPE="${IPAD_TYPE:-iPad Pro 13-inch (M5)}"      # 13"  -> 2064x2752
 WHAT="${1:-all}"
 mkdir -p "$OUT"
@@ -47,8 +49,14 @@ PY
 }
 
 capture_ios() { # <device-type> <out-subdir> <scheme>
-  local type="$1" sub="$2" scheme="$3" udid res
-  udid="$(udid_for "$type")"; [ -n "$udid" ] || { echo "No simulator for '$type'"; exit 1; }
+  local type="$1" sub="$2" scheme="$3" udid res rt
+  udid="$(udid_for "$type")"
+  if [ -z "$udid" ]; then
+    rt="$(xcrun simctl list runtimes 2>/dev/null | grep -oE 'com.apple.CoreSimulator.SimRuntime.iOS-[0-9-]+' | tail -1)"
+    echo "    creating '$type' on $rt"
+    udid="$(xcrun simctl create "$type" "$type" "$rt" 2>/dev/null)"
+  fi
+  [ -n "$udid" ] || { echo "No simulator for '$type'"; exit 1; }
   echo "==> $type ($udid)"
   xcrun simctl boot "$udid" 2>/dev/null || true
   xcrun simctl bootstatus "$udid" -b >/dev/null 2>&1 || true
@@ -140,13 +148,15 @@ SWIFT
 }
 
 case "$WHAT" in
-  iphone) capture_ios "$IPHONE_TYPE" iphone IMPSYHost-iOS ;;
-  ipad)   capture_ios "$IPAD_TYPE"   ipad   IMPSYHost-iOS ;;
-  macos)  capture_macos ;;
-  all)    capture_ios "$IPHONE_TYPE" iphone IMPSYHost-iOS
-          capture_ios "$IPAD_TYPE"   ipad   IMPSYHost-iOS
-          capture_macos ;;
-  *) echo "usage: $0 [all|iphone|ipad|macos]"; exit 1 ;;
+  iphone)   capture_ios "$IPHONE_TYPE"     iphone     IMPSYHost-iOS ;;
+  iphone65) capture_ios "$IPHONE_6_5_TYPE" iphone-6.5 IMPSYHost-iOS ;;
+  ipad)     capture_ios "$IPAD_TYPE"       ipad       IMPSYHost-iOS ;;
+  macos)    capture_macos ;;
+  all)      capture_ios "$IPHONE_TYPE"     iphone     IMPSYHost-iOS
+            capture_ios "$IPHONE_6_5_TYPE" iphone-6.5 IMPSYHost-iOS
+            capture_ios "$IPAD_TYPE"       ipad       IMPSYHost-iOS
+            capture_macos ;;
+  *) echo "usage: $0 [all|iphone|iphone65|ipad|macos]"; exit 1 ;;
 esac
 
 echo "Done. Screenshots in $OUT"

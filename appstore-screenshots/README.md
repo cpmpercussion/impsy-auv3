@@ -6,7 +6,8 @@ screens — Dashboard, Settings, Mapping.
 
 | Folder | Size | App Store slot |
 |--------|------|----------------|
-| `iphone-6.9/` | 1320 × 2868 | iPhone 6.9" display (primary iOS requirement) |
+| `iphone-6.9/` | 1320 × 2868 | iPhone 6.9" display |
+| `iphone-6.5/` | 1284 × 2778 | iPhone 6.5" display — some App Store Connect setups require this slot and reject 6.9" sizes (accepted: 1242×2688 or 1284×2778) |
 | `ipad-13/`    | 2064 × 2752 | iPad 13" display (required for iPad) |
 | `macos/`      | 2880 × 1800 | Mac (16:10; all three screens composited on a branded canvas) |
 
