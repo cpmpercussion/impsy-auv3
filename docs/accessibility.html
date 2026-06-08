@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Privacy Policy — IMPSY</title>
-  <meta name="description" content="Privacy policy for IMPSY, an AUv3 MIDI Processor plugin for iOS and macOS. No accounts, no analytics, no tracking — MIDI stays on-device.">
+  <title>Accessibility — IMPSY</title>
+  <meta name="description" content="Accessibility statement for IMPSY, an AUv3 MIDI Processor plugin for iOS and macOS. Built to work with VoiceOver, Dynamic Type and the system accessibility features.">
 
   <link rel="icon" type="image/png" sizes="180x180" href="images/icon-180.png">
   <link rel="apple-touch-icon" sizes="180x180" href="images/icon-180.png">
@@ -59,7 +59,7 @@
       font-size: 0.9em;
     }
 
-    .privacy-pill {
+    .a11y-pill {
       display: inline-flex; align-items: center; gap: 0.4rem;
       background: rgba(67, 119, 66, 0.12);
       color: var(--cossack-green-deep);
@@ -68,7 +68,7 @@
       font-size: 0.82rem;
       font-weight: 600;
     }
-    .privacy-pill::before {
+    .a11y-pill::before {
       content: "";
       width: 8px; height: 8px; border-radius: 50%;
       background: var(--cossack-green);
@@ -109,71 +109,65 @@
 </nav>
 
 <main class="container py-5" style="max-width: 760px;">
-  <h1 class="mb-2">Privacy Policy</h1>
-  <p class="text-muted">Last updated: 23 May 2026</p>
+  <h1 class="mb-2">Accessibility</h1>
+  <p class="text-muted">Last updated: 8 June 2026</p>
 
-  <p>IMPSY is an AUv3 MIDI Processor plugin for iOS, iPadOS and macOS.
-  It is designed to be played, not to collect data about you. This page
-  explains what IMPSY does — and does not do — with your information.</p>
+  <p>IMPSY is an AUv3 MIDI Processor plugin for iOS, iPadOS and macOS. It is
+  built to be usable with the accessibility features that come with those
+  systems, so that playing music with a neural network does not depend on
+  seeing the screen or using a particular input device.</p>
 
-  <p><span class="privacy-pill">On-device. No network. No telemetry.</span></p>
+  <p><span class="a11y-pill">Designed for VoiceOver, Dynamic Type and system accessibility</span></p>
 
-  <h2>What we collect</h2>
-  <p><strong>Nothing.</strong> IMPSY has no user accounts, no analytics, no
-  advertising and no tracking. The app does not collect, store or transmit any
-  personal information about you or your device to the developer or to any
-  third party.</p>
+  <h2>What's supported</h2>
+  <ul>
+    <li><strong>VoiceOver labels and hints.</strong> Every control — the
+    sliders, the model and MIDI-device pickers, the per-dimension faders, the
+    mapping rows and their channel/number steppers, and the icon buttons — has
+    a spoken label, and the main controls add a hint describing what they do.</li>
+    <li><strong>Adjustable controls.</strong> The parameter sliders, the
+    Dashboard's per-dimension faders and the channel/number steppers are
+    exposed to VoiceOver as adjustable values, so a swipe up or down changes
+    them without needing to drag precisely.</li>
+    <li><strong>Dynamic Type.</strong> Text uses the system text styles, so it
+    follows the text size you set in your device's display settings.</li>
+    <li><strong>Status that isn't colour-only.</strong> The CALL / RESPONSE
+    state, model status and activity are conveyed with text as well as colour,
+    not by colour alone.</li>
+    <li><strong>Decorative elements are hidden.</strong> The flashing activity
+    LEDs are marked as decorative so VoiceOver skips them rather than reading
+    noise, while the meaningful per-dimension indicators are labelled.</li>
+  </ul>
 
-  <h2>How the app uses your device</h2>
-  <p>IMPSY runs entirely on your device. The neural-network inference happens
-  locally via Apple's audio extension sandbox and the TensorFlow Lite runtime
-  bundled with the plugin. The MIDI you play, and the MIDI IMPSY produces in
-  response, stay on the device throughout.</p>
+  <h2>Standards we aim for</h2>
+  <p>The plugin is designed to follow Apple's accessibility guidance for
+  iOS and macOS apps and the principles behind the Web Content Accessibility
+  Guidelines (WCAG) 2.1 at level AA where they apply. This is a statement of
+  intent and ongoing effort — IMPSY has not been through a formal third-party
+  accessibility audit, and we don't claim certified conformance.</p>
 
-  <p>The plugin stores your settings (loaded model, MIDI mappings, parameter
-  values, MIDI Thru state) in the AUv3 host's session state — the same state
-  your DAW saves when you save a project. That state lives wherever your DAW
-  puts it (typically inside the project file on your device or in your iCloud
-  Drive if you have iCloud sync on).</p>
+  <h2>Known limitations</h2>
+  <p>IMPSY runs inside whatever AUv3 host you load it in (a DAW such as AUM,
+  GarageBand or Logic, or the standalone IMPSY app). The host controls the
+  window, navigation and how the plugin's interface is presented, so part of
+  the experience depends on that host's own accessibility support, which is
+  outside our control. The activity LEDs and faders also update in real time
+  as music plays, which is informative visually but verbose under VoiceOver
+  during active playback.</p>
 
-  <h2>What about the model file?</h2>
-  <p>If you load a custom <code>.tflite</code> model via the Load Model button,
-  IMPSY stores a security-scoped reference to that file so it can reopen it the
-  next time your session loads. The file itself stays where you put it; IMPSY
-  does not upload or share it.</p>
-
-  <h2>Network access</h2>
-  <p>The plugin does not make any network calls. It does not phone home, check
-  for updates, fetch ads, send crash reports, or sync data to a server. If your
-  device is offline, IMPSY behaves identically to when it is online.</p>
-
-  <h2>Permissions the app may request</h2>
-  <p>IMPSY does not request access to your contacts, photos, location, camera or
-  microphone. The only system prompt you might see is the standard file picker
-  when you tap <em>Load Model…</em>, which lets you choose a <code>.tflite</code>
-  file from Files (iOS) or the Finder (macOS).</p>
-
-  <h2>Crash reports</h2>
-  <p>If you have Apple's <em>Share with App Developers</em> setting enabled in
-  your device's Privacy &amp; Security settings, Apple may forward anonymised
-  crash reports to the developer through App Store Connect. You can opt out at
-  any time in your device settings. The developer receives no other diagnostic
-  information.</p>
-
-  <h2>Children</h2>
-  <p>IMPSY is suitable for all ages and does not collect any information from
-  anyone, including children.</p>
-
-  <h2>Changes to this policy</h2>
-  <p>If this policy changes, the updated version will be posted on this page
-  with a new "last updated" date.</p>
-
-  <h2>Contact</h2>
-  <p>If you have questions about this policy, please contact Charles Martin
-  via <a href="https://charlesmartin.au">charlesmartin.au</a>, by email at
-  <a href="mailto:charles.martin@anu.edu.au?subject=IMPSY%20privacy">charles.martin@anu.edu.au</a>,
+  <h2>Tell us about a barrier</h2>
+  <p>If something in IMPSY is hard or impossible to use with assistive
+  technology, we want to fix it. Please get in touch with Charles Martin via
+  <a href="https://charlesmartin.au">charlesmartin.au</a>, by email at
+  <a href="mailto:charles.martin@anu.edu.au?subject=IMPSY%20accessibility">charles.martin@anu.edu.au</a>,
   or open an issue on the
-  <a href="https://github.com/cpmpercussion/impsy-auv3">IMPSY-AUv3 GitHub repository</a>.</p>
+  <a href="https://github.com/cpmpercussion/impsy-auv3">IMPSY-AUv3 GitHub repository</a>.
+  Describe what you were trying to do, the assistive technology and device you
+  were using, and what got in the way — it all helps.</p>
+
+  <h2>Changes to this statement</h2>
+  <p>As IMPSY's accessibility improves, this page will be updated with a new
+  "last updated" date above.</p>
 </main>
 
 <footer>
@@ -183,7 +177,7 @@
     </div>
     <div>
       <a href="index.html">Home</a>
-      &middot; <a href="accessibility.html">Accessibility</a>
+      &middot; <a href="privacy.html">Privacy</a>
       &middot; <a href="https://github.com/cpmpercussion/impsy-auv3">Source on GitHub</a>
       &middot; <a href="https://github.com/cpmpercussion/impsy">IMPSY framework</a>
     </div>
