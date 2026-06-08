@@ -210,5 +210,6 @@ LaunchServices clings to stale extension paths from Xcode archives and old Deriv
 
 ## Known issues
 
-**`auval` warns/fails on Class Data: `<type> == componentType`.**
-`kAudioUnitProperty_ClassInfo` returns a dict that is missing the required `componentType`, `componentSubType`, `componentManufacturer`, `version`, `data` keys — see `IMPSYAudioUnit+State.swift` (the `fullState` implementation). Logic still loads the plugin, but `auval -v aumi impy 'CpM!'` finishes with `AU VALIDATION FAILED`, and Logic's Plug-in Manager may flag the plugin as "Failed Validation". Follow-up: have `fullState` getter include the four AU component descriptor keys around the existing key/value blob.
+None currently open.
+
+**Resolved — `auval` Class Data: `<type> == componentType`.** `fullState` used to build a fresh `[:]` holding only IMPSY's own keys, omitting the `componentType` / `componentSubType` / `componentManufacturer` / `version` / `data` keys Apple requires, so `auval -v aumi impy 'CpM!'` finished `AU VALIDATION FAILED`. Fixed by starting `buildFullState()` from `super.fullState` (which carries the identity keys) and merging IMPSY's keys on top — see `IMPSYAudioUnit+State.swift`. **Do not** reintroduce a fresh `[:]` there. Verifying after AU changes requires building into the *registered* DerivedData path and re-running `lsregister -f` first (the stale-path trap above), or `auval` validates the old binary.
