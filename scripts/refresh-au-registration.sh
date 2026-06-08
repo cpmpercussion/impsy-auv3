@@ -71,18 +71,18 @@ echo
 LIVE_HOST=""
 case "$PREFERRED" in
   "")
-    if [[ -d "/Applications/IMPSYHost-macOS.app" ]]; then
-      LIVE_HOST="/Applications/IMPSYHost-macOS.app"
+    if [[ -d "/Applications/IMPSY.app" ]]; then
+      LIVE_HOST="/Applications/IMPSY.app"
     else
       # Fall back to most recent Debug build.
-      LIVE_HOST=$(ls -td ~/Library/Developer/Xcode/DerivedData/IMPSY-AUv3-*/Build/Products/Debug/IMPSYHost-macOS.app 2>/dev/null | head -1 || true)
+      LIVE_HOST=$(ls -td ~/Library/Developer/Xcode/DerivedData/IMPSY-AUv3-*/Build/Products/Debug/IMPSY.app 2>/dev/null | head -1 || true)
     fi
     ;;
   debug)
-    LIVE_HOST=$(ls -td ~/Library/Developer/Xcode/DerivedData/IMPSY-AUv3-*/Build/Products/Debug/IMPSYHost-macOS.app 2>/dev/null | head -1 || true)
+    LIVE_HOST=$(ls -td ~/Library/Developer/Xcode/DerivedData/IMPSY-AUv3-*/Build/Products/Debug/IMPSY.app 2>/dev/null | head -1 || true)
     ;;
   applications)
-    LIVE_HOST="/Applications/IMPSYHost-macOS.app"
+    LIVE_HOST="/Applications/IMPSY.app"
     ;;
   *)
     LIVE_HOST="$PREFERRED"
@@ -90,7 +90,7 @@ case "$PREFERRED" in
 esac
 
 if [[ -z "$LIVE_HOST" || ! -d "$LIVE_HOST" ]]; then
-  echo "Could not locate a live IMPSYHost-macOS.app to register."
+  echo "Could not locate a live IMPSY.app to register."
   echo "Tried: ${PREFERRED:-auto}. Pass a path explicitly if needed."
   exit 1
 fi

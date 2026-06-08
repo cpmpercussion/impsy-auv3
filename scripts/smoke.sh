@@ -86,12 +86,13 @@ smoke_macos() {
     -configuration Debug \
     -derivedDataPath "$DD" 2>&1 | tail -1
 
-  local app="$DD/Build/Products/Debug/IMPSYHost-macOS.app"
+  # Scheme is IMPSYHost-macOS but the product builds as IMPSY.app (PRODUCT_NAME).
+  local app="$DD/Build/Products/Debug/IMPSY.app"
   [ -d "$app" ] || fail "Built app not found at $app"
 
   log "Launching $app"
   # Kill any prior instance so launch is deterministic and the log window is fresh.
-  pkill -f "IMPSYHost-macOS.app/Contents/MacOS/" 2>/dev/null || true
+  pkill -f "IMPSY.app/Contents/MacOS/" 2>/dev/null || true
   # Record start time so log show only returns lines since launch.
   local since
   since=$(date "+%Y-%m-%d %H:%M:%S")
@@ -100,14 +101,14 @@ smoke_macos() {
 
   log "[IMPSY] log output:"
   local logs
-  logs=$(log show --predicate 'processImagePath CONTAINS "IMPSYHost-macOS.app"' \
+  logs=$(log show --predicate 'processImagePath CONTAINS "IMPSY.app"' \
     --start "$since" --style compact 2>/dev/null | grep "\[IMPSY\]" || true)
   echo "$logs"
 
   # Capture a screenshot of the host window (if screencapture is available).
   screencapture -x "$ART_DIR/macos-host.png" 2>/dev/null || true
 
-  pkill -f "IMPSYHost-macOS.app/Contents/MacOS/" 2>/dev/null || true
+  pkill -f "IMPSY.app/Contents/MacOS/" 2>/dev/null || true
 
   local rc=0
   echo "$logs" | grep -q "Loaded bundled model" \

@@ -144,6 +144,11 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: au.charlesmartin.impsy
+        # Build the bundle as IMPSY.app while keeping the target/scheme named
+        # IMPSYHost-macOS (so test-target wiring and scripts that build by
+        # scheme are undisturbed). Bundle id is set explicitly above, so the
+        # rename doesn't touch AU registration or UI-test app lookup.
+        PRODUCT_NAME: IMPSY
         INFOPLIST_FILE: IMPSYHost/macOS/Info.plist
         MARKETING_VERSION: "1.1"
         CURRENT_PROJECT_VERSION: "1"
@@ -153,6 +158,7 @@ targets:
       path: IMPSYHost/macOS/Info.plist
       properties:
         CFBundleName: IMPSY
+        CFBundleDisplayName: IMPSY
         NSDocumentsFolderUsageDescription: "IMPSY loads TFLite model files from your Files app."
         LSMinimumSystemVersion: "$(MACOSX_DEPLOYMENT_TARGET)"
         LSApplicationCategoryType: public.app-category.music
