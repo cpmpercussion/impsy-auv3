@@ -112,13 +112,18 @@ SWIFT
   done
   pkill -f "IMPSY.app/Contents/MacOS/IMPSY" 2>/dev/null || true
 
-  # Composite each window onto a 16:10 branded canvas for the Mac App Store.
-  for f in "$OUT"/macos/impsy-*.png; do
-    local base bg; base="$(basename "$f")"
-    case "$base" in *-dark-*) bg='#21302a';; *) bg='#fbf8ee';; esac
+  # 3-up 16:10 mockup (Dashboard · Settings · Mapping) per appearance, for the
+  # Mac App Store (which requires 16:10). Hairline border + branded canvas so
+  # the windows separate cleanly from the background.
+  for ap in light dark; do
+    local bg bc
+    if [ "$ap" = dark ]; then bg='#2b5230'; bc='rgba(255,255,255,0.16)'
+    else                      bg='#fbf8ee'; bc='rgba(0,0,0,0.10)'; fi
     magick -size 2880x1800 "xc:$bg" \
-      \( "$f" -resize x1480 \) -gravity center -composite \
-      "$OUT/macos-appstore/$base"
+      \( "$OUT/macos/impsy-$ap-dashboard.png" -resize x1400 -bordercolor "$bc" -border 2 \) -gravity northwest -geometry +56+200 -composite \
+      \( "$OUT/macos/impsy-$ap-settings.png"  -resize x1400 -bordercolor "$bc" -border 2 \) -gravity northwest -geometry +1005+200 -composite \
+      \( "$OUT/macos/impsy-$ap-mapping.png"   -resize x1400 -bordercolor "$bc" -border 2 \) -gravity northwest -geometry +1954+200 -composite \
+      "$OUT/macos-appstore/impsy-macos-trio-$ap.png"
   done
 }
 

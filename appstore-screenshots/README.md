@@ -8,11 +8,14 @@ screens — Dashboard, Settings, Mapping.
 |--------|------|----------------|
 | `iphone-6.9/` | 1320 × 2868 | iPhone 6.9" display (primary iOS requirement) |
 | `ipad-13/`    | 2064 × 2752 | iPad 13" display (required for iPad) |
-| `macos/`      | 2880 × 1800 | Mac (16:10; the IMPSY window composited on a branded canvas) |
+| `macos/`      | 2880 × 1800 | Mac (16:10; all three screens composited on a branded canvas) |
 
-iPhone and iPad shots are full-screen with a mocked 9:41 status bar. macOS
-shots are the app window composited onto a 16:10 canvas (cream for light,
-deep green for dark) to satisfy the Mac App Store's 16:10 requirement.
+iPhone and iPad shots are full-screen with a mocked 9:41 status bar. The macOS
+images are a single 16:10 mockup per appearance showing all three screens
+(Dashboard · Settings · Mapping) side by side on a branded canvas (cream for
+light, deep green for dark), to satisfy the Mac App Store's 16:10 requirement.
+The plain macOS window screenshots used on the website live in
+`docs/images/screens/`.
 
 Regenerate:
 
