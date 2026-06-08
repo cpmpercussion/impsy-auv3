@@ -37,6 +37,16 @@ final class HostWindowController: NSWindowController {
             defer: false
         )
         window.title = "IMPSY"
+        // Screenshot capture only: force the whole window's appearance — title
+        // bar, SwiftUI content, and the bottom MIDI-bridge status strip — so
+        // captures are consistently light or dark. (Setting it on just the
+        // hosting view leaves the title bar and status strip on the system
+        // appearance.) Unset in production → follows the system as usual.
+        switch ProcessInfo.processInfo.environment["IMPSY_TEST_APPEARANCE"] {
+        case "dark":  window.appearance = NSAppearance(named: .darkAqua)
+        case "light": window.appearance = NSAppearance(named: .aqua)
+        default:      break
+        }
         window.contentMinSize = NSSize(width: 380, height: 360)
         window.center()
         self.init(window: window)

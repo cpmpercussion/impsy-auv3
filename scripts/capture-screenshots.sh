@@ -84,7 +84,7 @@ capture_macos() {
   app="$(ls -td "$HOME"/Library/Developer/Xcode/DerivedData/IMPSY-AUv3-*/Build/Products/Debug/IMPSY.app | head -1)"
   bin="$app/Contents/MacOS/IMPSY"
 
-  local winid_swift; winid_swift="$(mktemp /tmp/impsy-winid-XXXX.swift)"
+  local winid_swift="/tmp/impsy-winid.swift"
   cat > "$winid_swift" <<'SWIFT'
 import CoreGraphics
 import Foundation
