@@ -116,6 +116,6 @@ Plain macOS window screenshots used on the marketing site live in `docs/images/s
 - [x] Register App IDs at developer.apple.com (unified, both bundle IDs)
 - [x] Capture screenshots at each required size — see `appstore-screenshots/`
 - [ ] Create the App record at appstoreconnect.apple.com (one record, both platforms)
-- [ ] Upload archives via Xcode Organizer
+- [x] Builds — uploaded automatically by Xcode Cloud (ci_scripts/ci_post_clone.sh builds the TFLite xcframework first); use the Xcode Cloud build in App Store Connect rather than a manual Organizer upload
 - [ ] Resolve the `auval` Class Data note if it still flags (fixed in code; re-verify pre-submission)
 - [ ] Justify the temporary-exception entitlement on macOS submission (text above)
