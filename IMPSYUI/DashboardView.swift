@@ -77,6 +77,7 @@ struct DashboardView: View {
                     .buttonStyle(.bordered)
                     .controlSize(.small)
                     .disabled(!viewModel.modelStatus.isReady)
+                    .accessibilityHint("Clears IMPSY's memory and restarts its musical state")
                     .accessibilityIdentifier("dashboard.resetLSTM")
             }
             .padding(10)
@@ -324,7 +325,8 @@ private struct DimensionFader: View {
                 label: "Dimension \(dimension)",
                 formattedValue: String(format: "%.2f", localValue),
                 tint: userActive ? .red : .green,
-                showsTickWhenIdle: false
+                showsTickWhenIdle: false,
+                hint: "Drives this dimension and sends MIDI input to IMPSY"
             )
 
             Text(String(format: "%.2f", localValue))

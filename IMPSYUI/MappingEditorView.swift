@@ -230,9 +230,11 @@ private struct MappingRow: View {
 
             // Channel (1–16). The note/CC number stepper is unlabelled —
             // the type picker already says which it is.
-            CompactStepper(label: "Ch", value: $mapping.channel, range: 1...16)
+            CompactStepper(label: "Ch", value: $mapping.channel, range: 1...16,
+                           accessibilityName: "MIDI channel")
             CompactStepper(label: nil, value: $mapping.number,
-                           range: 0...127, enabled: mapping.messageType.usesNumber)
+                           range: 0...127, enabled: mapping.messageType.usesNumber,
+                           accessibilityName: "Note or controller number")
 
             // Row-level actions (reorder / delete). Tucked into a kebab menu so
             // the row stays readable on phone widths; reorder is functional —
@@ -283,6 +285,8 @@ private struct RowActionMenu: View {
         .menuIndicator(.hidden)
         .menuStyle(.borderlessButton)
         .fixedSize()
+        .accessibilityLabel("Row options")
+        .accessibilityHint("Move this dimension up or down, or delete it")
     }
 }
 
@@ -295,6 +299,9 @@ private struct CompactStepper: View {
     @Binding var value: Int
     let range: ClosedRange<Int>
     var enabled: Bool = true
+    /// VoiceOver name for the whole stepper. The visible `label` is too terse
+    /// ("Ch") or absent for the number field, so callers pass a spoken name.
+    var accessibilityName: String = ""
 
     var body: some View {
         HStack(spacing: 4) {
@@ -320,6 +327,20 @@ private struct CompactStepper: View {
             .opacity(enabled ? 1 : 0.4)
         }
         .fixedSize()
+        // Collapse the two ± buttons and the readout into one adjustable
+        // element so VoiceOver reads "<name>, <value>, adjustable" and the
+        // swipe gestures step it, rather than landing on bare "minus"/"plus".
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityName)
+        .accessibilityValue(enabled ? "\(value)" : "not applicable")
+        .accessibilityAdjustableAction { direction in
+            guard enabled else { return }
+            switch direction {
+            case .increment: value = min(range.upperBound, value + 1)
+            case .decrement: value = max(range.lowerBound, value - 1)
+            @unknown default: break
+            }
+        }
     }
 
     private func stepButton(_ systemName: String, active: Bool,
@@ -356,6 +377,10 @@ private struct EnableCheckbox: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        // The SF Symbol carries no text, so VoiceOver needs an explicit label
+        // and the toggle state. .isSelected announces the checked state.
+        .accessibilityLabel("Dimension enabled")
+        .accessibilityAddTraits(isOn ? .isSelected : [])
     }
 }
 

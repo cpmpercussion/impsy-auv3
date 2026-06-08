@@ -20,6 +20,7 @@ struct ModelStatusView: View {
                 Spacer()
                 ModelPickerButton { url in viewModel.loadModel(url: url) }
                     .buttonStyle(.bordered)
+                    .accessibilityHint("Choose a .tflite model file for IMPSY to play")
                     .accessibilityIdentifier("settings.loadModelButton")
             }
         }

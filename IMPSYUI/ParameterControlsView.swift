@@ -9,28 +9,34 @@ struct ParameterControlsView: View {
                          value: $viewModel.threshold,
                          range: ParameterRanges.thresholdMin...ParameterRanges.thresholdMax,
                          format: "%.1f s",
-                         identifier: "param.threshold")
+                         identifier: "param.threshold",
+                         hint: "Seconds of silence before IMPSY starts responding")
             ParameterRow(label: "Sigma Temp",
                          value: $viewModel.sigmaTemp,
                          range: ParameterRanges.sigmaTempMin...ParameterRanges.sigmaTempMax,
                          format: "%.3f",
-                         identifier: "param.sigmaTemp")
+                         identifier: "param.sigmaTemp",
+                         hint: "Temperature for note values; higher adds variation")
             ParameterRow(label: "Pi Temp",
                          value: $viewModel.piTemp,
                          range: ParameterRanges.piTempMin...ParameterRanges.piTempMax,
                          format: "%.2f",
-                         identifier: "param.piTemp")
+                         identifier: "param.piTemp",
+                         hint: "Temperature for note choice; higher adds variation")
             ParameterRow(label: "Timescale",
                          value: $viewModel.timescale,
                          range: ParameterRanges.timescaleMin...ParameterRanges.timescaleMax,
                          format: "%.2f ×",
-                         identifier: "param.timescale")
+                         identifier: "param.timescale",
+                         hint: "Scales response timing; higher values play slower")
             HStack(spacing: 8) {
                 Text("MIDI Thru")
                     .frame(width: 80, alignment: .leading)
                     .font(.system(.caption, design: .rounded))
                 Toggle("", isOn: $viewModel.inputThru)
                     .labelsHidden()
+                    .accessibilityLabel("MIDI Thru")
+                    .accessibilityHint("Echoes your mapped MIDI input straight to the output as you play")
                     .accessibilityIdentifier("param.inputThru")
                 Spacer()
             }
@@ -53,12 +59,14 @@ struct DedupControlsView: View {
                          value: $viewModel.dedupNoteWindowMs,
                          range: ParameterRanges.dedupWindowMin...ParameterRanges.dedupWindowMax,
                          format: "%.0f ms",
-                         identifier: "param.dedupNoteWindowMs")
+                         identifier: "param.dedupNoteWindowMs",
+                         hint: "Drops repeated notes emitted within this many milliseconds")
             ParameterRow(label: "CC Window",
                          value: $viewModel.dedupCCWindowMs,
                          range: ParameterRanges.dedupWindowMin...ParameterRanges.dedupWindowMax,
                          format: "%.0f ms",
-                         identifier: "param.dedupCCWindowMs")
+                         identifier: "param.dedupCCWindowMs",
+                         hint: "Drops repeated control changes and pitch bends within this many milliseconds")
         }
         .padding(10)
         .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.04)))
@@ -73,6 +81,7 @@ private struct ParameterRow: View {
     let range: ClosedRange<Float>
     let format: String
     let identifier: String
+    var hint: String = ""
 
     var body: some View {
         HStack(spacing: 8) {
@@ -83,7 +92,8 @@ private struct ParameterRow: View {
                              range: range,
                              label: label,
                              formattedValue: String(format: format, value),
-                             tint: .accentColor)
+                             tint: .accentColor,
+                             hint: hint)
             Text(String(format: format, value))
                 .frame(width: 60, alignment: .trailing)
                 .font(.system(.caption, design: .monospaced))
@@ -115,6 +125,10 @@ struct SlimParameterBar: View {
     /// Used by the Dashboard's per-dimension faders so a long stack of bars
     /// reads as a clean progress meter at rest.
     var showsTickWhenIdle: Bool = true
+    /// VoiceOver hint describing what adjusting this bar does. The element is
+    /// already announced as adjustable (VoiceOver supplies the swipe gesture),
+    /// so this should describe the *effect*, not the gesture. Empty = no hint.
+    var hint: String = ""
 
     @State private var isInteracting: Bool = false
 
@@ -168,6 +182,7 @@ struct SlimParameterBar: View {
         .accessibilityElement()
         .accessibilityLabel(Text(label))
         .accessibilityValue(Text(formattedValue))
+        .accessibilityHint(Text(hint))
         .accessibilityAdjustableAction { direction in
             let span = range.upperBound - range.lowerBound
             let step = span / 20
