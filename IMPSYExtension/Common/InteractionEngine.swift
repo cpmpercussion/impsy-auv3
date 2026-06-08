@@ -273,7 +273,15 @@ final class InteractionEngine: @unchecked Sendable {
 
         // ── User input: record it and let the RNN listen ─────────────────────
         if gotUserInput {
-            for dim in touchedDimensions {
+            // Coalesce per-dimension UI feedback to once per tick. A fast knob
+            // sweep lands dozens of CCs touching the same dimension in a single
+            // 10 ms drain; firing onUserInputReceived per packet floods the main
+            // thread (each hop mutates @Published state), and the backlog grows
+            // unboundedly until input stops. inputVector[dim] already holds the
+            // latest value, so reporting once per distinct dimension is lossless
+            // for the LEDs/faders. Mirrors the Set() dedup the inputThru path
+            // below already uses.
+            for dim in Set(touchedDimensions) {
                 let value = dim < inputVector.count ? inputVector[dim] : 0
                 onUserInputReceived?(dim, value)
             }
