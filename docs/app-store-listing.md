@@ -23,9 +23,10 @@ One App Store Connect app record, both platforms (iOS + macOS) selected in the N
 
 | Field | Value |
 |---|---|
-| Privacy Policy URL | _TODO — Charles to fill in_ |
-| Support URL | _TODO — Charles to fill in_ |
-| Marketing URL (optional) | _TODO — optional_ |
+| Privacy Policy URL | `https://charlesmartin.au/impsy-auv3/privacy.html` |
+| Support URL | `https://charlesmartin.au/impsy-auv3/#support` |
+| Marketing URL (optional) | `https://charlesmartin.au/impsy-auv3/` |
+| Accessibility (not an ASC field; linked from the description) | `https://charlesmartin.au/impsy-auv3/accessibility.html` |
 
 ## Promotional text (170 chars, editable post-release without re-review)
 
@@ -38,26 +39,38 @@ A live duet between you and a neural network. Send MIDI from any keyboard, get b
 ```
 Jam with an AI MIDI partner.
 
-IMPSY listens to what you play and improvises musical responses in your DAW. Load it as an AUv3 MIDI Processor in Logic Pro, MainStage, AUM, AudioBus or Cubasis, send it MIDI from any keyboard or controller, and route its output to any instrument plug-in. The result is a live duet between you and a neural network trained on musical performances.
+IMPSY listens to what you play and improvises musical responses. Load it as an AUv3 MIDI Processor in Logic Pro, MainStage, AUM, AudioBus or Cubasis, send it MIDI from any keyboard or controller, and route its output to any instrument. Or run the standalone app and plug your MIDI gear straight in — IMPSY also appears as Core MIDI virtual ports (IMPSY In / IMPSY Out), so you can route through it from DAWs that don't host AUv3 MIDI plug-ins, including Ableton Live, or play it with no DAW at all. Either way it's a live duet between you and a neural network trained on musical performances.
 
 How it works
 
-IMPSY runs a Mixture Density Recurrent Neural Network (MDRNN) on-device. Every note, control change or pitch-bend you send becomes input to the model, which predicts what should happen next — including the timing of the response. Four controls shape the conversation:
+IMPSY runs a Mixture Density Recurrent Neural Network (MDRNN) on-device. Every note, control change or pitch-bend you send becomes input to the model, which predicts what should happen next — including the timing of the response. Shape the conversation with:
 
 • Threshold — how long IMPSY waits between your input and its reply
 • Sigma Temperature — randomness of pitch / control values
 • Pi Temperature — randomness of which musical "idea" the model chooses
 • Timescale — speeds up or slows down the response
+• MIDI Thru — pass your own playing through to the output alongside IMPSY's
+
+Connect anything
+
+• Map each model dimension to any MIDI message — notes, CCs or pitch-bend — on any channel, independently for input and output
+• Connect hardware or IAC MIDI devices directly in the standalone app, or use the always-on IMPSY In / IMPSY Out virtual ports
+• Import and export your mappings as TOML, compatible with the IMPSY Python toolkit
 
 Custom models
 
-IMPSY ships with a default 9-dimensional model trained for general musical interaction, but you can load any .tflite model trained with the IMPSY research toolkit. Map each model dimension to any MIDI message — notes, CCs, pitch-bend — and use IMPSY with synths, drum machines, lighting rigs, or anything that speaks MIDI.
+IMPSY ships with a default 9-dimensional model trained for general musical interaction, but you can load any .tflite model trained with the open-source IMPSY research toolkit — for synths, drum machines, lighting rigs, or anything that speaks MIDI.
+
+Accessibility
+
+IMPSY is built to work with VoiceOver and Dynamic Type: every control is labelled, the sliders are adjustable by VoiceOver, and status is conveyed with text, not colour alone. Full statement: charlesmartin.au/impsy-auv3/accessibility.html
 
 Compatibility
 
 • AUv3 MIDI Processor — no audio I/O
-• Developed and tested in Logic Pro; MainStage, AUM, AudioBus and Cubasis also host AUv3 MIDI Processor (aumi) plugins
-• Requires iOS 17 or macOS 14
+• Developed and tested in Logic Pro; also hosts as an AUv3 MIDI Processor (aumi) in MainStage, AUM, AudioBus and Cubasis
+• Standalone app with Core MIDI virtual ports works alongside any DAW, including Ableton Live
+• Requires iOS 17, or macOS 14 on an Apple Silicon Mac
 • MIDI stays on-device — no network, no telemetry
 
 Credits
@@ -68,14 +81,14 @@ IMPSY is research software from Charles Patrick Martin (ANU School of Computing)
 ## Keywords (100-char limit, no spaces after commas)
 
 ```
-AUv3,MIDI,AI,neural,network,improvisation,generative,music,MDRNN,IMPSY,AUM,Logic,MainStage,plugin
+AUv3,MIDI,AI,neural,improvisation,generative,music,MDRNN,Ableton,Logic,AUM,synth,plugin,standalone
 ```
-89 characters used.
+98 characters used (limit 100).
 
 ## What's New in This Version (170 chars, per build)
 
 ```
-First release. Includes a bundled neural-network model trained for general musical interaction; load your own IMPSY models via Files.
+First release. AUv3 MIDI plug-in or standalone with Core MIDI virtual ports and direct device connections. Bundled neural model; load your own IMPSY models via Files.
 ```
 
 ## macOS submission notes
@@ -86,22 +99,23 @@ The macOS host uses `com.apple.security.temporary-exception.audio-unit-host` so 
 
 ## Screenshots — required sizes
 
+Generated by `scripts/capture-screenshots.sh`, light + dark, three screens each (Dashboard / Settings / Mapping). Stored in `appstore-screenshots/`.
+
 | Device | Resolution | Status |
 |---|---|---|
-| iPhone 6.7" (15/16 Pro Max) | 1290×2796 | TODO |
-| iPhone 6.5" (XS Max / 11 Pro Max) | 1242×2688 _(optional if 6.7 supplied)_ | TODO |
-| iPad Pro 12.9" 6th gen | 2048×2732 | TODO |
-| iPad Pro 13" M4 (recommended) | 2064×2752 | TODO |
-| Mac | 1280×800 minimum | TODO |
+| iPhone 6.9" (16/17 Pro Max) | 1320×2868 | ✓ `appstore-screenshots/iphone-6.9/` (light + dark, mocked 9:41 status bar) |
+| iPad 13" (Pro M4/M5) | 2064×2752 | ✓ `appstore-screenshots/ipad-13/` (light + dark) |
+| Mac | 2880×1800 (16:10) | ✓ `appstore-screenshots/macos/` — one trio mockup per appearance (all three screens) |
 
-App icon 1024×1024 already lives in `Resources/AppIcon/`.
+Plain macOS window screenshots used on the marketing site live in `docs/images/screens/`. App icon 1024×1024 lives in `Resources/AppIcon/`.
 
 ## Outstanding pre-submission checklist
 
-- [ ] Privacy Policy URL — host on charlesmartin.au or repo Pages
-- [ ] Support URL — host on charlesmartin.au or link to repo issues
+- [x] Privacy Policy URL — live at charlesmartin.au/impsy-auv3/privacy.html (GitHub Pages)
+- [x] Support URL — live at charlesmartin.au/impsy-auv3/#support
 - [x] Register App IDs at developer.apple.com (unified, both bundle IDs)
+- [x] Capture screenshots at each required size — see `appstore-screenshots/`
 - [ ] Create the App record at appstoreconnect.apple.com (one record, both platforms)
-- [ ] Capture screenshots at each required size
 - [ ] Upload archives via Xcode Organizer
+- [ ] Resolve the `auval` Class Data note if it still flags (fixed in code; re-verify pre-submission)
 - [ ] Justify the temporary-exception entitlement on macOS submission (text above)
