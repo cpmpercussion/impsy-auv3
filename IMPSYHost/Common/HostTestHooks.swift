@@ -18,10 +18,12 @@ enum HostTestHooks {
     // MARK: - Env keys (also referenced by TestsUI helpers)
 
     static let modelB64Key   = "IMPSY_TEST_MODEL_B64"
-    // Path-based alternative to modelB64Key for fixtures that bust the
-    // launch env-var size limit (~1 MB on iOS simulator). Used by the
-    // dim25 UI test — its base64 model is ~1.3 MB.
-    static let modelPathKey  = "IMPSY_TEST_MODEL_PATH"
+    // NOTE: there is deliberately no file-path variant of the model hook.
+    // The sandboxed macOS host cannot read files written by the test runner
+    // (its temp dir lives in a different sandbox container), so a path-based
+    // hand-off silently fails. Base64 works because *this process* writes
+    // the bytes into its own container temp before loading. Keep fixtures
+    // small enough for the launch env-var limit (~1 MB total).
     static let configB64Key  = "IMPSY_TEST_CONFIG_B64"
     static let logFolderKey  = "IMPSY_TEST_LOG_FOLDER"
     static let injectHzKey   = "IMPSY_TEST_INJECT_INPUT_HZ"
@@ -36,7 +38,6 @@ enum HostTestHooks {
     static func apply(to au: IMPSYAudioUnit) {
         let env = ProcessInfo.processInfo.environment
         applyModelHook(au: au, env: env)
-        applyModelPathHook(au: au, env: env)
         applyConfigHook(au: au, env: env)
         applyLogFolderHook(au: au, env: env)
         applyInputInjectionHook(au: au, env: env)
@@ -60,17 +61,6 @@ enum HostTestHooks {
             NSLog("[IMPSY] HostTestHooks: model write failed: %@",
                   String(describing: error))
         }
-    }
-
-    private static func applyModelPathHook(au: IMPSYAudioUnit, env: [String: String]) {
-        guard let path = env[modelPathKey], !path.isEmpty else { return }
-        let url = URL(fileURLWithPath: path)
-        guard FileManager.default.fileExists(atPath: url.path) else {
-            NSLog("[IMPSY] HostTestHooks: %@ does not exist (%@)", modelPathKey, path)
-            return
-        }
-        au.loadModel(url: url)
-        NSLog("[IMPSY] HostTestHooks: queued model load from %@", path)
     }
 
     // MARK: - Config (TOML)

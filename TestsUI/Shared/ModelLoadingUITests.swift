@@ -37,31 +37,23 @@ final class ModelLoadingUITests: IMPSYUITestCase {
     // anything over 16 was untested in Python (see issue #10). Loading this
     // confirms the AUv3 can host wider models without falling over.
     //
-    // The 1 MB tflite base64-encodes to ~1.3 MB which blows past the iOS
-    // simulator's launch env-var size limit, so this case writes the fixture
-    // to a temp file and passes the path via IMPSY_TEST_MODEL_PATH instead.
+    // The fixture is an *untrained* dim-25 model with units=32 (built with
+    // `impsy.mdrnn.build_mdrnn_model` + `tflite_converter`): dimension width
+    // is what this test exercises, and the small parameter count keeps the
+    // base64 payload (~158 KB) inside launch env-var limits. A file-path
+    // hand-off can't be used here: the sandboxed macOS host cannot read
+    // files written to the test runner's temp directory.
     func testNonBundledDim25ModelLoadsEndToEnd() throws {
         try assertModelLoads(
-            fixtureName: "musicMDRNN-dim25-layers2-units128-mixtures5-scale10",
-            expectedDimension: 25,
-            viaFilePath: true
+            fixtureName: "musicMDRNN-dim25-layers2-units32-mixtures5-scale10",
+            expectedDimension: 25
         )
     }
 
     private func assertModelLoads(fixtureName: String,
-                                  expectedDimension: Int,
-                                  viaFilePath: Bool = false) throws {
-        let app: XCUIApplication
-        if viaFilePath {
-            let data = try fixtureData(name: fixtureName, ext: "tflite")
-            let url = URL(fileURLWithPath: NSTemporaryDirectory())
-                .appendingPathComponent("impsy-ui-test-\(fixtureName).tflite")
-            try data.write(to: url)
-            app = launchHost(modelPath: url.path)
-        } else {
-            let b64 = try fixtureBase64(name: fixtureName, ext: "tflite")
-            app = launchHost(modelB64: b64)
-        }
+                                  expectedDimension: Int) throws {
+        let b64 = try fixtureBase64(name: fixtureName, ext: "tflite")
+        let app = launchHost(modelB64: b64)
 
         // 1. Dashboard shows "Ready · dim:N …" via the dashboard.modelStatus
         //    identifier — confirms the load succeeded and inspector ran.

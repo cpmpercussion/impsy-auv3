@@ -9,7 +9,6 @@ import Foundation
 
 enum UITestEnvKeys {
     static let modelB64   = "IMPSY_TEST_MODEL_B64"
-    static let modelPath  = "IMPSY_TEST_MODEL_PATH"
     static let configB64  = "IMPSY_TEST_CONFIG_B64"
     static let logFolder  = "IMPSY_TEST_LOG_FOLDER"
     static let injectHz   = "IMPSY_TEST_INJECT_INPUT_HZ"

@@ -82,6 +82,11 @@ final class IMPSYViewModel: ObservableObject {
     @Published var loggingEnabled: Bool = false
     @Published var logFolderPath: String? = nil
 
+    // MIDI device connections (#29). Set only by the standalone hosts (which
+    // own the CoreMIDIBridge); stays nil in the AUv3 extension, hiding the
+    // device pickers there — inside a DAW the host owns MIDI routing.
+    @Published var midiEndpointStore: MIDIEndpointStore? = nil
+
     // MARK: - Audio Unit reference
 
     weak var audioUnit: IMPSYAudioUnit? {

@@ -68,6 +68,8 @@ scripts/build_tflite_xcframework.sh  ← assembles Packages/TensorFlowLite/Frame
 | `ParameterControlsView.swift` | Four sliders (threshold, sigmaTemp, piTemp, timescale) |
 | `MappingEditorView.swift` | Segmented input/output tab + scrollable per-dimension mapping rows |
 | `ModelPickerButton.swift` | `UIDocumentPickerViewController` (iOS) / `NSOpenPanel` (macOS) wrapped as SwiftUI button |
+| `MIDIEndpointStore.swift` | UI-facing model of host MIDI device connections; no CoreMIDI imports (IMPSYUI compiles into the extensions). Populated/acted-on by `CoreMIDIBridge` |
+| `MIDIConnectionView.swift` | Input/Output device pickers on the Settings screen; hidden in the AUv3 extension (store is nil there) |
 
 ## Architecture: threading model
 

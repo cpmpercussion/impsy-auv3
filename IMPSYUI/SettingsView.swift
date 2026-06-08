@@ -26,6 +26,15 @@ struct SettingsView: View {
                 DedupControlsView(viewModel: viewModel)
             }
 
+            // Device pickers exist only in the standalone hosts — the store
+            // is nil inside the AUv3 extension (the DAW owns MIDI routing).
+            if let midiStore = viewModel.midiEndpointStore {
+                VStack(alignment: .leading, spacing: 4) {
+                    sectionLabel("MIDI Devices")
+                    MIDIConnectionView(store: midiStore)
+                }
+            }
+
             VStack(alignment: .leading, spacing: 4) {
                 sectionLabel("Configuration")
                 ConfigPickerControls(viewModel: viewModel)
