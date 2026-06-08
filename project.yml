@@ -81,7 +81,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: au.charlesmartin.impsy
         INFOPLIST_FILE: IMPSYHost/iOS/Info.plist
-        MARKETING_VERSION: "1.1"
+        MARKETING_VERSION: "1.0"
         CURRENT_PROJECT_VERSION: "1"
         SWIFT_VERSION: "5.9"
         OTHER_LDFLAGS: "-ObjC"
@@ -150,7 +150,7 @@ targets:
         # rename doesn't touch AU registration or UI-test app lookup.
         PRODUCT_NAME: IMPSY
         INFOPLIST_FILE: IMPSYHost/macOS/Info.plist
-        MARKETING_VERSION: "1.1"
+        MARKETING_VERSION: "1.0"
         CURRENT_PROJECT_VERSION: "1"
         SWIFT_VERSION: "5.9"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
@@ -199,7 +199,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: au.charlesmartin.impsy.IMPSYExtension
         INFOPLIST_FILE: IMPSYExtension/iOS/IMPSYExtension_iOS-Info.plist
-        MARKETING_VERSION: "1.1"
+        MARKETING_VERSION: "1.0"
         CURRENT_PROJECT_VERSION: "1"
         SWIFT_VERSION: "5.9"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
@@ -230,7 +230,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: au.charlesmartin.impsy.IMPSYExtension
         INFOPLIST_FILE: IMPSYExtension/macOS/IMPSYExtension_macOS-Info.plist
-        MARKETING_VERSION: "1.1"
+        MARKETING_VERSION: "1.0"
         CURRENT_PROJECT_VERSION: "1"
         SWIFT_VERSION: "5.9"
         OTHER_LDFLAGS: "-ObjC"
