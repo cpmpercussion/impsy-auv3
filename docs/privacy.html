@@ -110,7 +110,7 @@
 
 <main class="container py-5" style="max-width: 760px;">
   <h1 class="mb-2">Privacy Policy</h1>
-  <p class="text-muted">Last updated: 23 May 2026</p>
+  <p class="text-muted">Last updated: 12 June 2026</p>
 
   <p>IMPSY is an AUv3 MIDI Processor plugin for iOS, iPadOS and macOS.
   It is designed to be played, not to collect data about you. This page
@@ -142,6 +142,15 @@
   next time your session loads. The file itself stays where you put it; IMPSY
   does not upload or share it.</p>
 
+  <h2>Session logs</h2>
+  <p>IMPSY can optionally record your playing. If you switch on
+  <em>Record Session Logs</em> in the Settings screen, the MIDI you and the
+  model play is written to <code>.log</code> files (in the format used by the
+  IMPSY Python toolkit, so they can be used to train new models) in a folder
+  you choose. Logging is off by default. The log files stay in that folder on
+  your device — IMPSY never uploads or shares them, and you can delete them at
+  any time.</p>
+
   <h2>Network access</h2>
   <p>The plugin does not make any network calls. It does not phone home, check
   for updates, fetch ads, send crash reports, or sync data to a server. If your
@@ -149,9 +158,11 @@
 
   <h2>Permissions the app may request</h2>
   <p>IMPSY does not request access to your contacts, photos, location, camera or
-  microphone. The only system prompt you might see is the standard file picker
-  when you tap <em>Load Model…</em>, which lets you choose a <code>.tflite</code>
-  file from Files (iOS) or the Finder (macOS).</p>
+  microphone. The only system prompts you might see are the standard file and
+  folder pickers: choosing a <code>.tflite</code> model with
+  <em>Load Model…</em>, importing or exporting a TOML configuration, or picking
+  the folder for session logs — and, on macOS, the system may ask permission
+  for a folder (such as Documents) the first time you choose a file there.</p>
 
   <h2>Crash reports</h2>
   <p>If you have Apple's <em>Share with App Developers</em> setting enabled in

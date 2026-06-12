@@ -428,6 +428,8 @@
             <tr><td class="name">Pi Temp</td><td class="range">0.1 – 5.0</td><td class="range">1.0</td><td>Randomness of mixture-component choice.</td></tr>
             <tr><td class="name">Timescale</td><td class="range">0.1 – 4.0×</td><td class="range">1.0×</td><td>Speeds up or slows down the response.</td></tr>
             <tr><td class="name">MIDI Thru</td><td class="range">on / off</td><td class="range">on</td><td>Pass your own MIDI through to the synth as well as into IMPSY.</td></tr>
+            <tr><td class="name">Note Dedup</td><td class="range">0 – 500 ms</td><td class="range">30 ms</td><td>Suppress repeated identical notes inside this window. 0 turns it off.</td></tr>
+            <tr><td class="name">CC Dedup</td><td class="range">0 – 500 ms</td><td class="range">30 ms</td><td>Suppress repeated identical CC / pitch-bend values inside this window. 0 turns it off.</td></tr>
           </tbody>
         </table>
       </div>
@@ -449,8 +451,8 @@
         <p class="screen-caption">Dashboard — live state.</p>
       </div>
       <div class="col-6 col-md-4">
-        <div class="screen-frame"><img src="images/screens/impsy-iphone-settings.png" alt="Settings screen on iPhone: loaded model, four parameter sliders (Threshold, Sigma Temp, Pi Temp, Timescale), MIDI Thru toggle, and Import / Export TOML buttons."></div>
-        <p class="screen-caption">Settings — four sliders, MIDI thru, TOML config.</p>
+        <div class="screen-frame"><img src="images/screens/impsy-iphone-settings.png" alt="Settings screen on iPhone: loaded model, four parameter sliders (Threshold, Sigma Temp, Pi Temp, Timescale), MIDI Thru toggle, Note/CC dedup sliders, MIDI device pickers, Import / Export TOML buttons, and session-log recording controls."></div>
+        <p class="screen-caption">Settings — parameters, dedup, MIDI devices, TOML config, session logs.</p>
       </div>
       <div class="col-6 col-md-4">
         <div class="screen-frame"><img src="images/screens/impsy-iphone-mapping.png" alt="Mapping screen on iPhone: input/output toggle, eight dimension rows each with a MIDI message type (CC, Note, Pitch Bend), channel selector, and CC number selector."></div>
@@ -492,6 +494,7 @@
           <li>&#x2713; Inputs &amp; outputs mapped independently per dimension</li>
           <li>&#x2713; Note On / CC / Pitch Bend, any channel</li>
           <li>&#x2713; TOML import &amp; export, compatible with IMPSY's Python toolkit</li>
+          <li>&#x2713; Session logging in IMPSY's <code>.log</code> format — record performances to train new models</li>
         </ul>
       </div>
     </div>
@@ -514,13 +517,13 @@
       <div class="col-md-6 col-lg-4">
         <div class="feature-card">
           <h3>macOS 14 (Apple Silicon)</h3>
-          <p>Logic Pro and MainStage load IMPSY in the MIDI FX slot. Reaper added AUv3 MIDI Processor support in 7.55 (Nov 2025). Loopy Pro, Drambo, apeMatrix and Hosting AU also work as <code>aumi</code> hosts on macOS.</p>
+          <p>Logic Pro and MainStage load IMPSY in the MIDI FX slot. Reaper added AUv3 MIDI Processor support in 7.55 (Nov 2025). Drambo and apeMatrix also work as <code>aumi</code> hosts on macOS.</p>
         </div>
       </div>
       <div class="col-md-6 col-lg-4">
         <div class="feature-card">
-          <h3>MIDI in, MIDI out</h3>
-          <p>No audio I/O. IMPSY processes MIDI events end-to-end — your DAW's signal chain stays clean.</p>
+          <h3>Standalone, too</h3>
+          <p>No audio I/O — IMPSY processes MIDI end-to-end. The standalone app publishes <code>IMPSY In</code> / <code>IMPSY Out</code> Core MIDI virtual ports and connects directly to hardware, so any DAW (Ableton Live included) can route through it, or you can play it with no DAW at all.</p>
         </div>
       </div>
     </div>
@@ -533,11 +536,14 @@
       <div class="col-lg-6">
         <p class="section-eyebrow mb-2">Research background</p>
         <h2 class="section-title mb-3">IMPSY is research software.</h2>
-        <p>IMPSY (Intelligent Musical Prediction SYstem) began as research at the
-        <a href="https://comp.anu.edu.au">ANU School of Computing</a> into
-        creative music-making with on-device neural networks. The underlying
-        framework — model architecture, training code, and recording tools — is
-        open source.</p>
+        <p>IMPSY (the Interactive Musical Prediction SYstem) grew out of research
+        at the University of Oslo, in the EPEC project (2016–2019), where the
+        first version — IMPS — was released in 2019. Rewritten and renamed IMPSY
+        in 2024, it is now developed at the
+        <a href="https://comp.anu.edu.au">ANU School of Computing</a> as part of
+        ongoing research into creative music-making with on-device neural
+        networks. The underlying framework — model architecture, training code,
+        and recording tools — is open source.</p>
         <ul class="list-unstyled mb-0">
           <li>&middot; <a href="https://github.com/cpmpercussion/impsy">github.com/cpmpercussion/impsy</a> — IMPSY framework (Python, training, OSC server)</li>
           <li>&middot; <a href="https://github.com/cpmpercussion/impsy-auv3">github.com/cpmpercussion/impsy-auv3</a> — this AUv3 plugin (Swift, AudioUnit, TFLite)</li>
@@ -585,7 +591,7 @@
           <dd>If your controller is already routed to a synth in the DAW, turn MIDI Thru off so IMPSY only adds the model's responses. If IMPSY is the only thing reaching the synth, leave it on.</dd>
 
           <dt>Does it work in Ableton Live?</dt>
-          <dd>No. Live 11.2+ hosts AUv3 instruments and audio effects, but it has never hosted AU <em>MIDI effect</em> plugins — IMPSY is an AUv3 MIDI Processor (<code>aumi</code>), so Live won't see it. IMPSY is developed and tested in Logic Pro; MainStage, Reaper (7.55+), AUM, Loopy Pro, Drambo, apeMatrix, Cubasis, and AudioBus also host <code>aumi</code> plugins.</dd>
+          <dd>Not as a plugin — Live 11.2+ hosts AUv3 instruments and audio effects, but it has never hosted AU <em>MIDI effect</em> plugins, so it won't see an AUv3 MIDI Processor (<code>aumi</code>) like IMPSY. There is a route, though: run the standalone IMPSY app, which publishes <code>IMPSY In</code> / <code>IMPSY Out</code> Core MIDI virtual ports, and route Live's MIDI through those. As a plugin, IMPSY is developed and tested in Logic Pro; MainStage, Reaper (7.55+), AUM, Loopy Pro, Drambo, apeMatrix, Cubasis, and AudioBus also host <code>aumi</code> plugins.</dd>
 
           <dt>What about GarageBand?</dt>
           <dd>GarageBand on iOS and macOS does not load AUv3 MIDI Processor plugins (it only shows AUv3 instruments and audio effects) — Apple has never added <code>aumi</code> hosting to it. Use AUM, Loopy Pro, or Cubasis on iOS for IMPSY instead.</dd>
