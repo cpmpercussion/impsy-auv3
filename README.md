@@ -2,6 +2,8 @@
 
 An AUv3 MIDI Processor plugin that runs the [IMPSY](https://github.com/cpmpercussion/impsy) intelligent musical instrument system on iOS and macOS. Load a TFLite MDRNN model and interact with it in call-and-response mode inside any AUv3 host (AUM, ApeMatrix, Logic Pro, etc.).
 
+**[Download IMPSY on the App Store](https://apps.apple.com/app/id6771762122)** — available for iOS 17+ and macOS 14+ (Apple Silicon).
+
 ![IMPSY AUv3 on macOS — Dashboard, Settings, and Mapping views](appstore-screenshots/macos/impsy-macos-trio-light.png)
 
 ## What it does
