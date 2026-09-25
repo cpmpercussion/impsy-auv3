@@ -134,6 +134,20 @@ AUv3,MIDI,AI,improvisation,generative,music,MDRNN,Ableton,Logic,MainStage,synth,
 
 ## What's New in This Version (170 chars, per build)
 
+### 1.2 — macOS (156 chars; covers 1.1 too, since the App Store went 1.0 → 1.2)
+
+```
+Fixes MIDI input in the standalone app, which could be dropped entirely. Note On inputs now respond to any note and use its pitch, instead of only middle C.
+```
+
+### 1.2 — iOS (145 chars; the Core MIDI fix was macOS-only)
+
+```
+Note On inputs now respond to any note on the mapped channel and use its pitch as the value, matching IMPSY. Previously only middle C registered.
+```
+
+### 1.0
+
 ```
 First release. AUv3 MIDI plug-in or standalone with Core MIDI virtual ports and direct device connections. Bundled neural model; load your own IMPSY models via Files.
 ```
