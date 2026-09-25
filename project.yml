@@ -89,6 +89,10 @@ targets:
     info:
       path: IMPSYHost/iOS/Info.plist
       properties:
+        # Without these, xcodegen writes its "1.0"/"1" defaults and the host
+        # ignores MARKETING_VERSION (the extensions already use the variables).
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         CFBundleDisplayName: IMPSY
         UIRequiredDeviceCapabilities: [arm64]
         UISupportedInterfaceOrientations:
@@ -157,6 +161,10 @@ targets:
     info:
       path: IMPSYHost/macOS/Info.plist
       properties:
+        # Without these, xcodegen writes its "1.0"/"1" defaults and the host
+        # ignores MARKETING_VERSION (the extensions already use the variables).
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         CFBundleName: IMPSY
         CFBundleDisplayName: IMPSY
         NSDocumentsFolderUsageDescription: "IMPSY loads TFLite model files from your Files app."
