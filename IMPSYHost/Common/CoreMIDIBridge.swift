@@ -324,17 +324,13 @@ final class CoreMIDIBridge {
 
     private func receive(eventList: UnsafePointer<MIDIEventList>) {
         guard let engine = engine else { return }
-        let list = eventList.pointee
-        let count = Int(list.numPackets)
-        guard count > 0 else { return }
-
-        // First packet is embedded in the struct; subsequent ones are reached
-        // via MIDIEventPacketNext. The packet tuple is C-style — walk by
-        // pointer arithmetic.
-        var packetPtr: UnsafePointer<MIDIEventPacket> = withUnsafePointer(to: list.packet) { $0 }
-        for _ in 0..<count {
+        // Walk the packets in place in CoreMIDI's buffer. Do NOT copy
+        // `eventList.pointee` and take a pointer to its `packet` field: the
+        // copy only holds the first packet, and a pointer escaping
+        // `withUnsafePointer` is invalid under -O, which silently dropped all
+        // input in Release/App Store builds while Debug appeared to work.
+        for packetPtr in eventList.unsafeSequence() {
             processPacket(packetPtr, engine: engine)
-            packetPtr = UnsafePointer(MIDIEventPacketNext(UnsafeMutablePointer(mutating: packetPtr)))
         }
     }
 
