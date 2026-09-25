@@ -165,9 +165,13 @@ Three test targets:
 
 The UI tests inject fixture data via `IMPSY_TEST_*` launch-environment variables — `IMPSYHost/Common/HostTestHooks.swift` reads them and dispatches into the AU, bypassing system pickers. Hooks ship only in the host (not the AUv3 plugin).
 
+`CoreMIDIBridgeTests` round-trips real Core MIDI traffic through the host bridge's "IMPSY In" virtual port. It guards against a bug where input was silently dropped **only under `-O`** (Release/App Store builds): Debug passed with the bug present. Run the unit tests with `-configuration Release` too after touching `CoreMIDIBridge.swift` or other pointer-handling code.
+
 ```bash
 # Unit tests only
 xcodebuild test -project IMPSY-AUv3.xcodeproj -scheme IMPSYHost-macOS -destination 'platform=macOS' -only-testing:IMPSYTests
+# ...and under the optimiser, as shipped
+xcodebuild test -project IMPSY-AUv3.xcodeproj -scheme IMPSYHost-macOS -configuration Release -destination 'platform=macOS' -only-testing:IMPSYTests
 
 # Everything (smoke + UI tests on both platforms)
 ./scripts/smoke.sh                  # ios + macos smokes + all UI tests

@@ -259,6 +259,10 @@ targets:
         excludes:
           # Exclude AU-specific files that need entitlements/framework
           - "IMPSYAudioUnit*.swift"
+      # Host Core MIDI bridge (+ the UI store it depends on) for
+      # CoreMIDIBridgeTests' virtual-port round-trip.
+      - IMPSYHost/Common/CoreMIDIBridge.swift
+      - IMPSYUI/MIDIEndpointStore.swift
     dependencies:
       - package: TensorFlowLite
       - package: TOMLKit

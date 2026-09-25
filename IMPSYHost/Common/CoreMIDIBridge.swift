@@ -41,7 +41,7 @@ final class CoreMIDIBridge {
     private weak var engine: InteractionEngine?
     private var client: MIDIClientRef = 0
     private var virtualSource: MIDIEndpointRef = 0       // bytes flow OUT of IMPSY
-    private var virtualDestination: MIDIEndpointRef = 0  // bytes flow IN to IMPSY
+    private(set) var virtualDestination: MIDIEndpointRef = 0  // bytes flow IN to IMPSY (readable for tests)
 
     // Direct device connections (#29). Desired UIDs are the source of truth
     // (persisted; kept across unplugs); connected refs reflect what is
