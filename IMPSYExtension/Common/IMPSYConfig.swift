@@ -166,9 +166,8 @@ extension IMPSYConfig {
         case "note_on":
             // IMPSY's note_on has no fixed note number — the note number IS
             // the dimension's value on input, and the model output drives
-            // the emitted note number on output. We keep the existing
-            // AUv3 `number` field defaulted to 60 (middle C); see #3 notes
-            // about the input-decode semantic gap.
+            // the emitted note number on output. The AUv3 `number` field is
+            // unused for noteOn; it keeps a placeholder 60 (middle C).
             return DimensionMapping(
                 id: dimensionID, messageType: .noteOn,
                 channel: channel, number: 60

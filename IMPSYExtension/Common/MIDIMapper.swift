@@ -76,9 +76,14 @@ struct MIDIMapper {
             guard mapping.channel == channel else { continue }
             switch mapping.messageType {
             case .noteOn:
-                guard messageType == 0x90, bytes[1] == UInt8(mapping.number) else { continue }
-                let velocity = length >= 3 ? bytes[2] : 0
-                return (mapping.id, Float(velocity) / 127.0)
+                // Matches IMPSY Python (`midi_message_to_index_value` in
+                // ../impsy/impsy/utils.py): any note on the mapped channel,
+                // with the note number (pitch) as the value. `mapping.number`
+                // is ignored. Deliberate deviation: velocity-0 note-ons are
+                // note-offs (running-status keyboards send them on release)
+                // and are skipped, so a key release isn't a second interaction.
+                guard messageType == 0x90, length >= 3, bytes[2] > 0 else { continue }
+                return (mapping.id, Float(bytes[1]) / 127.0)
             case .controlChange:
                 guard messageType == 0xB0, bytes[1] == UInt8(mapping.number) else { continue }
                 let value = length >= 3 ? bytes[2] : 0
@@ -192,10 +197,10 @@ struct MIDIMapper {
         let ch = UInt8(mapping.channel - 1) & 0x0F
         switch mapping.messageType {
         case .noteOn:
-            let note = UInt8(mapping.number & 0x7F)
-            // Velocity carries the value so decodeInput recovers it.
-            let vel = UInt8(min(127, max(0, Int(v * 127.0 + 0.5))))
-            return MIDIEvent(0x90 | ch, note, vel)
+            // Pitch carries the value, as in decodeInput and encodeOutput.
+            // Velocity must be non-zero or decodeInput treats it as note-off.
+            let note = UInt8(min(127, max(0, Int(v * 127.0 + 0.5))))
+            return MIDIEvent(0x90 | ch, note, 64)
         case .controlChange:
             let ccVal = UInt8(min(127, max(0, mapping.denormalize(toCCValue: v))))
             return MIDIEvent(0xB0 | ch, UInt8(mapping.number & 0x7F), ccVal)

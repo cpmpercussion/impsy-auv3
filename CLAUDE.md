@@ -150,7 +150,7 @@ Defaults match `configs/AiC-charles-u6midipro.toml` in the IMPSY repo.
 
 ## MIDI mapping conventions
 
-- **Note On**: normalised = `velocity / 127.0`
+- **Note On**: normalised = `note / 127.0` (pitch; any note on the mapped channel, velocity ignored except velocity-0 note-ons are skipped as note-offs). Matches IMPSY Python. The mapping's `number` is unused for Note On
 - **CC**: normalised = `value / 127.0`
 - **Pitch Bend**: normalised = `(rawValue + 8192) / 16383.0`
 - Dimension IDs are 1-based (dim 0 is time, not user-configurable)

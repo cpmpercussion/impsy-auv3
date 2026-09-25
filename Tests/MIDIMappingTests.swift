@@ -24,20 +24,51 @@ final class MIDIMappingTests: XCTestCase {
 
     // MARK: - MIDIMapper decode
 
-    func testDecodeNoteOn() {
-        let mappings = MIDIMappingSet(
-            inputMappings: [DimensionMapping(id: 1, messageType: .noteOn, channel: 1, number: 60)],
+    /// Decode `bytes` through a single note-on input mapping (dim 1, ch 1).
+    private func decodeNoteOn(_ bytes: [UInt8], mappingNumber: Int = 60) -> (Int, Float)? {
+        let mapper = MIDIMapper(mappings: MIDIMappingSet(
+            inputMappings: [DimensionMapping(id: 1, messageType: .noteOn, channel: 1, number: mappingNumber)],
             outputMappings: []
-        )
-        let mapper = MIDIMapper(mappings: mappings)
-        // Note On ch1, note 60, velocity 100
-        let bytes: [UInt8] = [0x90, 60, 100]
-        let result = bytes.withUnsafeBufferPointer { buf in
-            mapper.denseUpdate(fromBytes: buf.baseAddress!, length: 3)
+        ))
+        return bytes.withUnsafeBufferPointer { buf in
+            mapper.denseUpdate(fromBytes: buf.baseAddress!, length: bytes.count)
         }
-        XCTAssertNotNil(result)
+    }
+
+    func testDecodeNoteOnUsesPitchAsValue() {
+        // Matches IMPSY Python: value = note / 127, velocity ignored.
+        let result = decodeNoteOn([0x90, 72, 100])
         XCTAssertEqual(result?.0, 0)   // 0-based index for dim 1
-        XCTAssertEqual(result?.1 ?? -1, 100.0 / 127.0, accuracy: 1e-4)
+        XCTAssertEqual(result?.1 ?? -1, 72.0 / 127.0, accuracy: 1e-4)
+        XCTAssertEqual(decodeNoteOn([0x90, 72, 1])?.1 ?? -1, 72.0 / 127.0, accuracy: 1e-4)
+    }
+
+    func testDecodeNoteOnAcceptsAnyNoteRegardlessOfMappingNumber() {
+        // Regression: decode used to require note == mapping.number (60), so
+        // a real keyboard only registered middle C.
+        for note: UInt8 in [0, 36, 59, 61, 127] {
+            let result = decodeNoteOn([0x90, note, 90], mappingNumber: 60)
+            XCTAssertEqual(result?.1 ?? -1, Float(note) / 127.0, accuracy: 1e-4, "note \(note)")
+        }
+    }
+
+    func testDecodeNoteOnIgnoresVelocityZeroAndNoteOff() {
+        XCTAssertNil(decodeNoteOn([0x90, 64, 0]))    // running-status note-off
+        XCTAssertNil(decodeNoteOn([0x80, 64, 64]))   // explicit note-off
+        XCTAssertNil(decodeNoteOn([0x91, 64, 100]))  // wrong channel
+    }
+
+    func testNoteOnEncodeDecodeRoundTrip() {
+        // Dashboard faders and test injection build input via encode(value:);
+        // it must produce MIDI that decodeInput maps back to the same value.
+        let mapping = DimensionMapping(id: 1, messageType: .noteOn, channel: 1, number: 60)
+        for value: Float in [0, 0.25, 0.5, 0.9, 1] {
+            let e = MIDIMapper.encode(value: value, using: mapping)
+            XCTAssertEqual(e.data1, UInt8((value * 127).rounded()))   // pitch
+            XCTAssertGreaterThan(e.data2, 0)                           // not a note-off
+            let decoded = decodeNoteOn([e.statusByte, e.data1, e.data2])
+            XCTAssertEqual(decoded?.1 ?? -1, value, accuracy: 0.5 / 127 + 1e-4)
+        }
     }
 
     func testDecodeCC() {

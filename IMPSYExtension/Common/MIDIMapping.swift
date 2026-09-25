@@ -15,11 +15,12 @@ enum MIDIMessageType: String, Codable, CaseIterable {
         }
     }
 
-    /// Whether this type uses a "number" field (note number or CC number)
+    /// Whether this type uses the "number" field (CC number). Note On
+    /// doesn't: the note number *is* the value, on input and output alike.
     var usesNumber: Bool {
         switch self {
-        case .noteOn, .controlChange: return true
-        case .pitchBend:              return false
+        case .controlChange:      return true
+        case .noteOn, .pitchBend: return false
         }
     }
 }
@@ -33,7 +34,7 @@ struct DimensionMapping: Codable, Identifiable, Equatable {
     var messageType: MIDIMessageType
     /// MIDI channel (1–16)
     var channel: Int
-    /// Note number (0–127) for noteOn, CC number (0–127) for controlChange; ignored for pitchBend
+    /// CC number (0–127) for controlChange; ignored for noteOn (pitch is the value) and pitchBend
     var number: Int
     /// Lower bound of the CC range (0–127). Currently only consulted for
     /// `controlChange` — matches IMPSY's 5-tuple TOML form
