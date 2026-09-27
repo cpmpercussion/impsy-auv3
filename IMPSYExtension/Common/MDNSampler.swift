@@ -32,15 +32,11 @@ enum MDNSampler {
         piTemp: Float,
         sigmaTemp: Float
     ) -> [Float] {
-        let muCount = numMixtures * dimension
-
-        guard params.count >= muCount * 2 + numMixtures else {
+        guard let (mus, sigmas, piLogits) = split(params: params,
+                                                  dimension: dimension,
+                                                  numMixtures: numMixtures) else {
             return [Float](repeating: 0, count: dimension)
         }
-
-        let mus      = Array(params[0..<muCount])
-        let sigmas   = Array(params[muCount..<muCount * 2])
-        let piLogits = Array(params[muCount * 2..<muCount * 2 + numMixtures])
 
         // 1. Select mixture component using softmax with temperature
         let pis = softmaxWithTemperature(piLogits, temperature: piTemp)
@@ -58,6 +54,19 @@ enum MDNSampler {
         }
 
         return postProcess(output)
+    }
+
+    // MARK: - Parameter layout
+
+    /// Split flat MDN output into `(mus, sigmas, piLogits)`. `mus` and
+    /// `sigmas` are M×D row-major (mixture-major); nil if `params` is short.
+    static func split(params: [Float], dimension: Int, numMixtures: Int)
+        -> (mus: [Float], sigmas: [Float], piLogits: [Float])? {
+        let muCount = numMixtures * dimension
+        guard params.count >= muCount * 2 + numMixtures else { return nil }
+        return (Array(params[0..<muCount]),
+                Array(params[muCount..<muCount * 2]),
+                Array(params[muCount * 2..<muCount * 2 + numMixtures]))
     }
 
     // MARK: - Post-processing
@@ -97,7 +106,13 @@ enum MDNSampler {
     // MARK: - Categorical sampling
 
     static func sampleCategorical(_ probs: [Float]) -> Int {
-        var r = Float.random(in: 0..<1)
+        sampleCategorical(probs, draw: Float.random(in: 0..<1))
+    }
+
+    /// Pick the first mixture whose cumulative probability reaches `draw`,
+    /// as `sample_from_categorical` does in keras-mdn-layer.
+    static func sampleCategorical(_ probs: [Float], draw: Float) -> Int {
+        var r = draw
         for (i, p) in probs.enumerated() {
             r -= p
             if r <= 0 { return i }

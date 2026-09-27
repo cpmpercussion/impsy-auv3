@@ -176,7 +176,9 @@ struct MIDIMapper {
     /// note_on, then forget them. Call at mode/model transitions so that the
     /// last RNN-emitted note does not hang on the receiving synth.
     mutating func releaseAllNotes() -> [MIDIEvent] {
-        let offs = lastNotes.map { ch, note in
+        // Sorted by channel so the order is deterministic (Dictionary
+        // iteration order isn't).
+        let offs = lastNotes.sorted { $0.key < $1.key }.map { ch, note in
             MIDIEvent(0x80 | ch, note, 0)
         }
         lastNotes.removeAll()
