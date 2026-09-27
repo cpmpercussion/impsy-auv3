@@ -249,30 +249,18 @@ final class InteractionEngine: @unchecked Sendable {
     /// ~100 predictions/second regardless of the model's intended timing.
     private func tick() {
         // ── Drain MIDI input ──────────────────────────────────────────────────
-        let packets = inputBuffer.dequeueAll()
-        var gotUserInput = false
-        var touchedDimensions: [Int] = []
-
-        for packet in packets {
-            packet.withUnsafeBytes { ptr, length in
-                if let (index, value) = mapper.denseUpdate(fromBytes: ptr, length: length) {
-                    // index is 0-based into the user value dimensions
-                    if index < inputVector.count {
-                        inputVector[index] = value
-                    }
-                    touchedDimensions.append(index)
-                    gotUserInput = true
-                    // Log the full input vector after each mapped MIDI message,
-                    // matching `construct_input_list` in ../impsy/impsy/interaction.py.
-                    logger?.logInterface(values: inputVector)
-                }
-            }
-        }
-
         let now = ProcessInfo.processInfo.systemUptime
+        let ingested = Self.ingest(inputBuffer.dequeueAll(), at: now, mapper: mapper,
+                                   inputVector: &inputVector,
+                                   lastUserInputTime: &lastUserInputTime)
 
         // ── User input: record it and let the RNN listen ─────────────────────
-        if gotUserInput {
+        if let ingested {
+            // Log the full input vector after each mapped MIDI message,
+            // matching `construct_input_list` in ../impsy/impsy/interaction.py.
+            for row in ingested.logRows {
+                logger?.logInterface(values: row)
+            }
             // Coalesce per-dimension UI feedback to once per tick. A fast knob
             // sweep lands dozens of CCs touching the same dimension in a single
             // 10 ms drain; firing onUserInputReceived per packet floods the main
@@ -281,14 +269,12 @@ final class InteractionEngine: @unchecked Sendable {
             // latest value, so reporting once per distinct dimension is lossless
             // for the LEDs/faders. Mirrors the Set() dedup the inputThru path
             // below already uses.
-            for dim in Set(touchedDimensions) {
+            let touched = Set(ingested.touchedDimensions)
+            for dim in touched {
                 let value = dim < inputVector.count ? inputVector[dim] : 0
                 onUserInputReceived?(dim, value)
             }
-            let dt = max(now - lastUserInputTime, IMPSYConstants.minimumDeltaTime)
-            lastUserInputTime = now
-            // Full interaction vector consumed by the RNN: [dt, v_1 … v_N].
-            lastUserInteraction = [Float(dt)] + inputVector
+            lastUserInteraction = ingested.interaction
 
             // In call mode the RNN consumes user input purely to advance its
             // LSTM state — the generated output is intentionally discarded so
@@ -305,7 +291,6 @@ final class InteractionEngine: @unchecked Sendable {
             // here because the user expects 1-in / 1-out from the direct
             // input controls.)
             if inputThru {
-                let touched = Set(touchedDimensions)
                 let events = mapper.encodeOutput(values: inputVector,
                                                  dimensions: touched)
                 for event in events {
@@ -344,6 +329,65 @@ final class InteractionEngine: @unchecked Sendable {
         }
     }
 
+    // MARK: - Input and playback steps
+    //
+    // The parts of tick() and generateAndScheduleResponse() that turn MIDI
+    // into model input and model output into playback, with the clock passed
+    // in so the conformance tests (Tests/ConformanceTests.swift) can drive
+    // them with IMPSY's pipeline.json and playback.json vectors.
+
+    struct IngestResult {
+        /// `inputVector` after each mapped packet, one 'interface' log row each.
+        var logRows: [[Float]]
+        /// 0-based dimensions the packets touched, in order (may repeat).
+        var touchedDimensions: [Int]
+        /// The interaction fed to the RNN: `[dt, v_1 … v_N]`.
+        var interaction: [Float]
+    }
+
+    /// Apply one tick's worth of MIDI packets to `inputVector`. Returns nil if
+    /// no packet matched an input mapping; otherwise advances
+    /// `lastUserInputTime` to `now` and returns the resulting interaction.
+    static func ingest(_ packets: [RawMIDIPacket],
+                       at now: Double,
+                       mapper: MIDIMapper,
+                       inputVector: inout [Float],
+                       lastUserInputTime: inout Double) -> IngestResult? {
+        var logRows: [[Float]] = []
+        var touched: [Int] = []
+        for packet in packets {
+            packet.withUnsafeBytes { ptr, length in
+                guard let (index, value) = mapper.denseUpdate(fromBytes: ptr, length: length) else { return }
+                // index is 0-based into the user value dimensions
+                if index < inputVector.count {
+                    inputVector[index] = value
+                }
+                touched.append(index)
+                logRows.append(inputVector)
+            }
+        }
+        guard !touched.isEmpty else { return nil }
+        let dt = max(now - lastUserInputTime, IMPSYConstants.minimumDeltaTime)
+        lastUserInputTime = now
+        return IngestResult(logRows: logRows, touchedDimensions: touched,
+                            interaction: [Float(dt)] + inputVector)
+    }
+
+    /// Turn one post-processed RNN output `[dt, v_1 … v_N]` into how long to
+    /// wait before playing it, the values to play, and the next RNN seed.
+    static func prepareResponsePlayback(output: [Float], timescale: Float)
+        -> (wait: Double, values: [Float], nextSeed: [Float]) {
+        // Apply the 1 ms scheduling floor before the timescale multiply so the
+        // value we schedule against matches what we feed back into the RNN.
+        // Mirrors `dt = max(dt, 0.001)` in ../impsy/impsy/interaction.py:485.
+        let rawDt = max(Double(output[0]), IMPSYConstants.responseLoopMinDt)
+        let dt = rawDt * Double(timescale)
+        let values = Array(output.dropFirst())
+        // The next prediction is seeded with this event. Matching interaction.py,
+        // the timescaled dt is what gets fed back into the RNN.
+        return (dt, values, [Float(dt)] + values)
+    }
+
     /// Drain note_off events for every channel with an outstanding note_on
     /// straight into the output ring buffer. Must be called on `inferenceQueue`.
     private func flushAllNoteOffs() {
@@ -378,16 +422,8 @@ final class InteractionEngine: @unchecked Sendable {
         }
 
         // output[0] = dt (seconds until this event), output[1…] = values in [0,1].
-        // Apply the 1 ms scheduling floor before the timescale multiply so the
-        // value we schedule against matches what we feed back into the RNN.
-        // Mirrors `dt = max(dt, 0.001)` in ../impsy/impsy/interaction.py:485.
-        let rawDt = max(Double(output[0]), IMPSYConstants.responseLoopMinDt)
-        let dt = rawDt * Double(timescale)
-        let values = Array(output.dropFirst())
-
-        // The next prediction is seeded with this event. Matching interaction.py,
-        // the timescaled dt is what gets fed back into the RNN.
-        let nextSeed = [Float(dt)] + values
+        let (dt, values, nextSeed) = Self.prepareResponsePlayback(output: output,
+                                                                  timescale: timescale)
 
         inferenceQueue.asyncAfter(deadline: .now() + dt) { [weak self] in
             guard let self,

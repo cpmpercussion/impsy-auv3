@@ -248,6 +248,13 @@ targets:
       - path: Tests
         excludes:
           - "Fixtures/**"
+          - "Conformance/**"
+      # IMPSY conformance vectors, copied from a tagged IMPSY release by
+      # scripts/update_conformance_vectors.sh. A folder reference keeps the
+      # vectors/ and models/ layout inside the test bundle.
+      - path: Tests/Conformance
+        type: folder
+        buildPhase: resources
       # Fixtures (TOML configs + .tflite models) are bundled as resources so
       # tests can read them via `Bundle(for:).url(forResource:)`.
       - path: Tests/Fixtures

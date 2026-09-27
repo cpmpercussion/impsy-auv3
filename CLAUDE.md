@@ -161,6 +161,7 @@ Defaults match `configs/AiC-charles-u6midipro.toml` in the IMPSY repo.
 Three test targets:
 
 - **`IMPSYTests`** (unit, macOS) — `Tests/*.swift`. `testInspectBundledSmallModel` runs end-to-end TFLite inference against a bundled `.tflite` fixture, so it doubles as a smoke test that the macOS xcframework loads correctly. The pair of `testInspectRealModel` / `testInspectSmallModel` tests look for models at `../impsy/models/` and skip otherwise.
+- **`ConformanceTests`** (part of `IMPSYTests`) — runs IMPSY's conformance vectors (`../impsy/spec/`, spec 1.0.0 from IMPSY v1.2.1) against `MIDIMapper`, `IMPSYConfig` mapping import, `InteractionEngine.ingest` / `prepareResponsePlayback`, `MDNSampler` and `TFLiteRNN`. The vectors are copied into `Tests/Conformance/` (pinned; `SOURCE` records tag and commit) so the suite runs on Xcode Cloud. Cases where the AUv3 knowingly differs from IMPSY are listed in `knownDivergences` and run under strict `XCTExpectFailure`, so fixing one fails the test until its entry is removed. WebSocket and dataset vectors are skipped as not applicable.
 - **`IMPSYUITests-iOS`** / **`IMPSYUITests-macOS`** — XCUITests in `TestsUI/Shared/` (compiled into both) plus per-platform suites under `TestsUI/macOS/`. Drive the host apps end-to-end: model loading, TOML import, logging hookup, screen switching, CALL/RESPONSE state. The cross-platform helpers in `IMPSYUITestCase.swift` paper over the iOS-vs-macOS differences in how SwiftUI surfaces text content (`label` vs `value`) and toggle state (`String "1"` vs `Int 1`).
 
 The UI tests inject fixture data via `IMPSY_TEST_*` launch-environment variables — `IMPSYHost/Common/HostTestHooks.swift` reads them and dispatches into the AU, bypassing system pickers. Hooks ship only in the host (not the AUv3 plugin).
@@ -199,6 +200,12 @@ The script is also run by `ci_scripts/ci_post_clone.sh` so Xcode Cloud builds pi
 
 **Load a model for testing:**
 Copy any `.tflite` from `../impsy/models/` to a location accessible via Files app, then use the Load Model button in the plugin UI.
+
+**Update the IMPSY conformance vectors** (after a new IMPSY release changes `spec/`):
+```bash
+./scripts/update_conformance_vectors.sh v1.2.1   # copies ../impsy/spec/{vectors,models} at that tag
+```
+A major `spec_version` bump fails `testSpecVersionIsSupported` on purpose: review what changed, then bump `supportedSpecMajor`.
 
 **Refresh the macOS AU registration:**
 ```bash

@@ -117,8 +117,26 @@ final class TFLiteRNN {
     ///   scaling is applied internally).
     /// - Returns: Sampled output vector of length `config.dimension`.
     func generate(input: [Float], piTemp: Float, sigmaTemp: Float) throws -> [Float] {
+        let mdnParams = try mdnOutput(input: input)
+        return MDNSampler.sample(
+            params:     mdnParams,
+            dimension:  config.dimension,
+            numMixtures: config.numMixtures,
+            piTemp:     piTemp,
+            sigmaTemp:  sigmaTemp
+        )
+    }
+
+    /// The model input tensor for `input`: each value times SCALE_FACTOR.
+    static func scaledInput(_ input: [Float]) -> [Float] {
+        input.map { $0 * IMPSYConstants.scaleFactor }
+    }
+
+    /// Run one forward pass, carry the LSTM states forward, and return the
+    /// raw MDN output `[mus | sigmas | piLogits]` (still scaled by 10).
+    func mdnOutput(input: [Float]) throws -> [Float] {
         // ── Copy scaled inputs ────────────────────────────────────────────────
-        let scaledInput = input.map { $0 * IMPSYConstants.scaleFactor }
+        let scaledInput = Self.scaledInput(input)
         let inputData = scaledInput.withUnsafeBufferPointer { Data(buffer: $0) }
         try interpreter.copy(inputData, toInputAt: inputsIndex)
 
@@ -151,14 +169,23 @@ final class TFLiteRNN {
             }
         }
 
-        // ── Sample from MDN output ────────────────────────────────────────────
-        return MDNSampler.sample(
-            params:     mdnParams,
-            dimension:  config.dimension,
-            numMixtures: config.numMixtures,
-            piTemp:     piTemp,
-            sigmaTemp:  sigmaTemp
-        )
+        return mdnParams
+    }
+
+    /// Which tensors were resolved as what, by name: the input tensors in
+    /// `[inputs, state_h_0, state_c_0, …]` order, the MDN output, and the
+    /// output that feeds each state input. Used by the conformance tests.
+    func resolvedTensorNames() throws -> (inputs: [String], mdnOutput: String, stateOutputs: [String: String]) {
+        var inputs = [try interpreter.input(at: inputsIndex).name]
+        var stateOutputs: [String: String] = [:]
+        for layer in 0..<config.numLayers {
+            let hIn = try interpreter.input(at: stateHInputIndices[layer]).name
+            let cIn = try interpreter.input(at: stateCInputIndices[layer]).name
+            inputs += [hIn, cIn]
+            stateOutputs[hIn] = try interpreter.output(at: stateHOutputIndices[layer]).name
+            stateOutputs[cIn] = try interpreter.output(at: stateCOutputIndices[layer]).name
+        }
+        return (inputs, try interpreter.output(at: mdnOutputIndex).name, stateOutputs)
     }
 
     /// Reset all LSTM states to zero.
