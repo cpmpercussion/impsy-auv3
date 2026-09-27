@@ -63,7 +63,7 @@ Select the `IMPSYHost-iOS` scheme and run on your iPad, or `IMPSYHost-macOS` for
 
 1. A bundled 9-dimensional model loads by default; load another `.tflite` model with the **Load Model** button (Files on iOS, Finder on macOS)
 2. Configure MIDI input/output mappings for each dimension, or import a TOML config from the IMPSY Python toolkit
-3. Adjust parameters (threshold, temperatures, timescale, MIDI thru, dedup windows)
+3. Adjust parameters (threshold, temperatures, timescale, MIDI thru, note dedup window)
 4. Route MIDI in and out in your AUv3 host — or run the host app standalone and use the `IMPSY In` / `IMPSY Out` virtual MIDI ports
 5. Optionally enable **Record Session Logs** to capture performances in IMPSY's `.log` training format
 
@@ -81,10 +81,10 @@ musicMDRNN-dim9-layers2-units64-mixtures5-scale10.tflite
 | Threshold | 0.1–10s | 0.1s | Silence duration before RNN starts responding |
 | Sigma Temp | 0.001–2.0 | 0.01 | Controls Gaussian sampling variance |
 | Pi Temp | 0.1–5.0 | 1.0 | Controls mixture component diversity |
-| Timescale | 0.1–4.0× | 1.0× | Multiplies predicted time deltas |
+| Timescale | 0.1–4.0× | 1.0× | Multiplies predicted time deltas for playback (the model is fed back the unscaled delta) |
 | MIDI Thru | on/off | on | Re-emits your own mapped input through the output mappings |
 
-Two further settings (not in the AU parameter tree, but saved with the session) suppress duplicate output: the **Note** and **CC dedup windows** (0–500 ms, default 30 ms; 0 disables).
+A further setting (not in the AU parameter tree, but saved with the session) suppresses repeated notes: the **note dedup window** (0–500 ms, default 30 ms; 0 disables). CC and pitch bend values are only sent when they change, as in IMPSY.
 
 ## Architecture
 

@@ -74,9 +74,8 @@ final class IMPSYViewModel: ObservableObject {
     @Published var timescale: Float = ParameterDefaults.timescale
     @Published var inputThru: Bool  = ParameterDefaults.inputThru > 0.5
 
-    // Output dedup windows (ms). 0 = off; mirrors fullState on the AU.
+    // Note dedup window (ms). 0 = off; mirrors fullState on the AU.
     @Published var dedupNoteWindowMs: Float = ParameterDefaults.dedupNoteWindowMs
-    @Published var dedupCCWindowMs:   Float = ParameterDefaults.dedupCCWindowMs
 
     // Session logging
     @Published var loggingEnabled: Bool = false
@@ -152,9 +151,8 @@ final class IMPSYViewModel: ObservableObject {
         loggingEnabled = au.loggingEnabled
         logFolderPath  = au.logFolderDisplayPath
 
-        // Sync dedup windows
+        // Sync dedup window
         dedupNoteWindowMs = au.dedupNoteWindowMs
-        dedupCCWindowMs   = au.dedupCCWindowMs
 
         // Listen for model status changes
         let modelToken = NotificationCenter.default.addObserver(
@@ -292,7 +290,6 @@ final class IMPSYViewModel: ObservableObject {
         $timescale.dropFirst().sink { [weak self] val in self?.setParameter(.timescale, value: val) }.store(in: &cancellables)
         $inputThru.dropFirst().sink { [weak self] on  in self?.setParameter(.inputThru, value: on ? 1 : 0) }.store(in: &cancellables)
         $dedupNoteWindowMs.dropFirst().sink { [weak self] v in self?.audioUnit?.dedupNoteWindowMs = v }.store(in: &cancellables)
-        $dedupCCWindowMs.dropFirst().sink   { [weak self] v in self?.audioUnit?.dedupCCWindowMs   = v }.store(in: &cancellables)
     }
 
     private func setParameter(_ address: ParameterAddress, value: Float) {
@@ -381,7 +378,11 @@ final class IMPSYViewModel: ObservableObject {
         guard mappings.inputMappings.indices.contains(dimensionIndex),
               let buffer = audioUnit?.engine.inputBuffer else { return }
         let mapping = mappings.inputMappings[dimensionIndex]
-        let event = MIDIMapper.encode(value: value, using: mapping)
+        // A note-on carries pitch and velocity together; send the paired
+        // dimension's current value as the other half so it doesn't jump.
+        let companion = mappings.companionInputIndex(for: dimensionIndex)
+            .flatMap { inputValues.indices.contains($0) ? inputValues[$0] : nil }
+        let event = MIDIMapper.encode(value: value, using: mapping, companion: companion)
         buffer.enqueue(RawMIDIPacket(event.statusByte, event.data1, event.data2,
                                      length: event.byteCount))
     }

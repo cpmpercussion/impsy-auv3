@@ -173,4 +173,19 @@ final class IMPSYConfigTests: XCTestCase {
         XCTAssertEqual(reparsed.inputMappings[0].messageType, .controlChange)
         XCTAssertEqual(reparsed.inputMappings[1].messageType, .noteOn)
     }
+
+    func testNoteVelocityAndFixedVelocityRoundTrip() throws {
+        let toml = """
+            [midi]
+            out_device = ["synth"]
+            [midi.output]
+            synth = [["note_on", 1, 100], ["note_velocity", 2], ["note_on", 2]]
+            """
+        let config = try IMPSYConfig.parse(toml)
+        XCTAssertEqual(config.outputMappings.map(\.messageType), [.noteOn, .noteVelocity, .noteOn])
+        XCTAssertEqual(config.outputMappings.map(\.velocity), [100, nil, nil])
+
+        let reparsed = try IMPSYConfig.parse(try config.serialize())
+        XCTAssertEqual(reparsed.outputMappings, config.outputMappings)
+    }
 }

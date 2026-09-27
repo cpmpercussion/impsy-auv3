@@ -31,7 +31,7 @@ final class MIDIMappingTests: XCTestCase {
             outputMappings: []
         ))
         return bytes.withUnsafeBufferPointer { buf in
-            mapper.denseUpdate(fromBytes: buf.baseAddress!, length: bytes.count)
+            mapper.denseUpdate(fromBytes: buf.baseAddress!, length: bytes.count).first
         }
     }
 
@@ -79,7 +79,7 @@ final class MIDIMappingTests: XCTestCase {
         let mapper = MIDIMapper(mappings: mappings)
         let bytes: [UInt8] = [0xB0, 74, 64]
         let result = bytes.withUnsafeBufferPointer { buf in
-            mapper.denseUpdate(fromBytes: buf.baseAddress!, length: 3)
+            mapper.denseUpdate(fromBytes: buf.baseAddress!, length: 3).first
         }
         XCTAssertNotNil(result)
         XCTAssertEqual(result?.1 ?? -1, 64.0 / 127.0, accuracy: 1e-4)
@@ -94,7 +94,7 @@ final class MIDIMappingTests: XCTestCase {
         // Pitch bend centre = 0x2000 = 8192; LSB=0, MSB=64 → (64<<7)|0 = 8192
         let bytes: [UInt8] = [0xE0, 0, 64]
         let result = bytes.withUnsafeBufferPointer { buf in
-            mapper.denseUpdate(fromBytes: buf.baseAddress!, length: 3)
+            mapper.denseUpdate(fromBytes: buf.baseAddress!, length: 3).first
         }
         XCTAssertNotNil(result)
         XCTAssertEqual(result?.1 ?? -1, 8192.0 / 16383.0, accuracy: 1e-4)
@@ -109,7 +109,7 @@ final class MIDIMappingTests: XCTestCase {
         // CC on channel 2 — should not match
         let bytes: [UInt8] = [0xB1, 74, 64]
         let result = bytes.withUnsafeBufferPointer { buf in
-            mapper.denseUpdate(fromBytes: buf.baseAddress!, length: 3)
+            mapper.denseUpdate(fromBytes: buf.baseAddress!, length: 3).first
         }
         XCTAssertNil(result)
     }
@@ -289,7 +289,7 @@ final class MIDIMappingTests: XCTestCase {
         let mapper = MIDIMapper(mappings: mappings)
         let bytes: [UInt8] = [0xB0, 74, 64]
         let result = bytes.withUnsafeBufferPointer { buf in
-            mapper.denseUpdate(fromBytes: buf.baseAddress!, length: 3)
+            mapper.denseUpdate(fromBytes: buf.baseAddress!, length: 3).first
         }
         XCTAssertNil(result)
     }
@@ -377,44 +377,35 @@ final class MIDIMappingTests: XCTestCase {
         XCTAssertEqual(events.count, 2)   // re-articulates: off + on
     }
 
-    func testDedupSuppressesCCWithSameValue() {
+    func testUnchangedCCIsNotResent() {
+        // impsy#110: a CC is only sent when its MIDI value changes. No time
+        // window — it applies to every encode.
         let mappings = MIDIMappingSet(
             inputMappings: [],
             outputMappings: [DimensionMapping(id: 1, messageType: .controlChange,
                                               channel: 1, number: 74)]
         )
         var mapper = MIDIMapper(mappings: mappings)
-        _ = mapper.encodeOutput(values: [0.5],
-                                now: 200.0,
-                                ccDedupWindow: 0.030)
-        // Same CC value within window — suppressed.
-        let same = mapper.encodeOutput(values: [0.5],
-                                       now: 200.020,
-                                       ccDedupWindow: 0.030)
-        XCTAssertTrue(same.isEmpty)
-        // Different CC value within window — emitted (only exact MIDI-byte
-        // matches dedup with no tolerance).
-        let changed = mapper.encodeOutput(values: [0.6],
-                                          now: 200.025,
-                                          ccDedupWindow: 0.030)
+        XCTAssertEqual(mapper.encodeOutput(values: [0.5]).count, 1)
+        XCTAssertTrue(mapper.encodeOutput(values: [0.5]).isEmpty)
+        XCTAssertTrue(mapper.encodeOutput(values: [0.502]).isEmpty)   // still 64
+        let changed = mapper.encodeOutput(values: [0.6])
         XCTAssertEqual(changed.count, 1)
         XCTAssertEqual(changed[0].statusByte, 0xB0)
+        // All-notes-off forgets the last values.
+        _ = mapper.releaseAllNotes()
+        XCTAssertEqual(mapper.encodeOutput(values: [0.6]).count, 1)
     }
 
-    func testDedupSuppressesPitchBendWithSameValue() {
+    func testUnchangedPitchBendIsNotResent() {
         let mappings = MIDIMappingSet(
             inputMappings: [],
             outputMappings: [DimensionMapping(id: 1, messageType: .pitchBend,
                                               channel: 1, number: 0)]
         )
         var mapper = MIDIMapper(mappings: mappings)
-        _ = mapper.encodeOutput(values: [0.5],
-                                now: 300.0,
-                                ccDedupWindow: 0.030)
-        let same = mapper.encodeOutput(values: [0.5],
-                                       now: 300.010,
-                                       ccDedupWindow: 0.030)
-        XCTAssertTrue(same.isEmpty)
+        XCTAssertEqual(mapper.encodeOutput(values: [0.5]).count, 1)
+        XCTAssertTrue(mapper.encodeOutput(values: [0.5]).isEmpty)
     }
 
     func testDedupIsPerDimension() {
@@ -431,12 +422,10 @@ final class MIDIMappingTests: XCTestCase {
         var mapper = MIDIMapper(mappings: mappings)
         _ = mapper.encodeOutput(values: [60.0 / 127.0, 0.25],
                                 now: 400.0,
-                                noteDedupWindow: 0.030,
-                                ccDedupWindow: 0.030)
+                                noteDedupWindow: 0.030)
         let events = mapper.encodeOutput(values: [60.0 / 127.0, 0.75],
                                          now: 400.010,
-                                         noteDedupWindow: 0.030,
-                                         ccDedupWindow: 0.030)
+                                         noteDedupWindow: 0.030)
         // Note suppressed; CC went through because its value changed.
         XCTAssertEqual(events.count, 1)
         XCTAssertEqual(events[0].statusByte, 0xB1)
@@ -549,7 +538,7 @@ final class MIDIMappingTests: XCTestCase {
         let mapper = MIDIMapper(mappings: mappings)
         let bytes: [UInt8] = [0xB0, 30, 64]
         let result = bytes.withUnsafeBufferPointer { buf in
-            mapper.decodeInput(bytes: buf.baseAddress!, length: 3)
+            mapper.decodeInput(bytes: buf.baseAddress!, length: 3).first
         }
         // CC 30 now maps to dim 1 (1-based) — id was renumbered after the move.
         XCTAssertEqual(result?.0, 1)
@@ -592,5 +581,73 @@ final class MIDIMappingTests: XCTestCase {
                                          noteDedupWindow: 0.030)
         XCTAssertEqual(events.count, 1)
         XCTAssertEqual(events[0].statusByte, 0x90)
+    }
+
+    // MARK: - Multi-dimension input and note velocity (impsy#98, #102)
+
+    private func decode(_ bytes: [UInt8], _ inputs: [DimensionMapping]) -> [(Int, Float)] {
+        let mapper = MIDIMapper(mappings: MIDIMappingSet(inputMappings: inputs, outputMappings: []))
+        return bytes.withUnsafeBufferPointer { mapper.denseUpdate(fromBytes: $0.baseAddress!, length: 3) }
+    }
+
+    func testMessageSetsEveryMappedDimension() {
+        let updates = decode([0xB0, 7, 127], [
+            DimensionMapping(id: 1, messageType: .controlChange, channel: 1, number: 7),
+            DimensionMapping(id: 2, messageType: .controlChange, channel: 1, number: 8),
+            DimensionMapping(id: 3, messageType: .controlChange, channel: 1, number: 7,
+                             minValue: 0, maxValue: 63),
+        ])
+        XCTAssertEqual(updates.map(\.0), [0, 2])
+        XCTAssertEqual(updates.map(\.1), [1, 1])
+    }
+
+    func testNoteOnSetsPitchAndVelocityDimensions() {
+        let inputs = [
+            DimensionMapping(id: 1, messageType: .noteOn, channel: 1, number: 60),
+            DimensionMapping(id: 2, messageType: .noteVelocity, channel: 1, number: 0),
+        ]
+        let updates = decode([0x90, 64, 100], inputs)
+        XCTAssertEqual(updates.map(\.0), [0, 1])
+        XCTAssertEqual(updates[0].1, 64.0 / 127.0, accuracy: 1e-6)
+        XCTAssertEqual(updates[1].1, 100.0 / 127.0, accuracy: 1e-6)
+        XCTAssertTrue(decode([0x90, 64, 0], inputs).isEmpty)   // note-off
+    }
+
+    func testDirectInputNoteCarriesCompanionHalf() {
+        // A fader on a velocity dimension sends the paired note dim's current
+        // pitch, so the note dimension doesn't jump.
+        let inputs = [
+            DimensionMapping(id: 1, messageType: .noteOn, channel: 2, number: 60),
+            DimensionMapping(id: 2, messageType: .noteVelocity, channel: 2, number: 0),
+        ]
+        let set = MIDIMappingSet(inputMappings: inputs, outputMappings: [])
+        XCTAssertEqual(set.companionInputIndex(for: 0), 1)
+        XCTAssertEqual(set.companionInputIndex(for: 1), 0)
+        let e = MIDIMapper.encode(value: 0.5, using: inputs[1], companion: 72.0 / 127.0)
+        XCTAssertEqual([e.statusByte, e.data1, e.data2], [0x91, 72, 64])
+        let updates = decode([e.statusByte, e.data1, e.data2], inputs)
+        XCTAssertEqual(updates[0].1, 72.0 / 127.0, accuracy: 1e-6)
+        XCTAssertEqual(updates[1].1, 64.0 / 127.0, accuracy: 1e-6)
+        // Without a companion, a note plays at velocity 127.
+        XCTAssertEqual(MIDIMapper.encode(value: 0.5, using: inputs[0]).data2, 127)
+    }
+
+    func testNoteOutputVelocity() {
+        var mapper = MIDIMapper(mappings: MIDIMappingSet(inputMappings: [], outputMappings: [
+            DimensionMapping(id: 1, messageType: .noteOn, channel: 1, number: 60),
+            DimensionMapping(id: 2, messageType: .noteOn, channel: 2, number: 60, velocity: 100),
+            DimensionMapping(id: 3, messageType: .noteOn, channel: 3, number: 60),
+            DimensionMapping(id: 4, messageType: .noteVelocity, channel: 3, number: 0),
+        ]))
+        let events = mapper.encodeOutput(values: [0.5, 0.5, 0.5, 0.0])
+        XCTAssertEqual(events.map(\.data2), [127, 100, 1])   // velocity dim sends nothing
+    }
+
+    func testLegacyMappingDecodesWithoutVelocity() throws {
+        let legacyJSON = """
+        {"id":1,"messageType":"noteOn","channel":1,"number":60}
+        """.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(DimensionMapping.self, from: legacyJSON)
+        XCTAssertNil(decoded.velocity)
     }
 }

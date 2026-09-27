@@ -53,15 +53,6 @@ extension IMPSYAudioUnit {
         }
     }
 
-    /// Output dedup window for CC and pitch bend events, in milliseconds.
-    var dedupCCWindowMs: Float {
-        get { _dedupCCWindowMs }
-        set {
-            _dedupCCWindowMs = newValue
-            engine.dedupCCWindowMs = newValue
-        }
-    }
-
     /// Whether session logging is enabled. Disabling closes the current log
     /// file. Enabling without a folder selected is a no-op for writes.
     var loggingEnabled: Bool {
@@ -267,7 +258,6 @@ extension IMPSYAudioUnit {
         state[StateKey.timescale] = engine.timescale
         state[StateKey.inputThru] = engine.inputThru ? Float(1) : Float(0)
         state[StateKey.dedupNoteWindowMs] = _dedupNoteWindowMs
-        state[StateKey.dedupCCWindowMs]   = _dedupCCWindowMs
 
         if let bookmark = _logFolderBookmarkData {
             state[StateKey.logFolderBookmark] = bookmark
@@ -307,10 +297,6 @@ extension IMPSYAudioUnit {
         if let v = state[StateKey.dedupNoteWindowMs] as? Float {
             _dedupNoteWindowMs = v
             engine.dedupNoteWindowMs = v
-        }
-        if let v = state[StateKey.dedupCCWindowMs] as? Float {
-            _dedupCCWindowMs = v
-            engine.dedupCCWindowMs = v
         }
 
         // Restore MIDI mappings

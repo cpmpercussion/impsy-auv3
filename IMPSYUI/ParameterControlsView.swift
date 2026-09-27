@@ -48,8 +48,8 @@ struct ParameterControlsView: View {
 
 // MARK: - Dedup Controls
 
-/// Two sliders that govern output dedup: same-value MIDI emissions inside the
-/// chosen window are dropped. The CC slider also covers pitch bend.
+/// The note dedup window: repeated RNN notes inside the chosen window are
+/// dropped. (Unchanged CC and pitch bend values are never resent.)
 struct DedupControlsView: View {
     @ObservedObject var viewModel: IMPSYViewModel
 
@@ -61,12 +61,6 @@ struct DedupControlsView: View {
                          format: "%.0f ms",
                          identifier: "param.dedupNoteWindowMs",
                          hint: "Drops repeated notes emitted within this many milliseconds")
-            ParameterRow(label: "CC Window",
-                         value: $viewModel.dedupCCWindowMs,
-                         range: ParameterRanges.dedupWindowMin...ParameterRanges.dedupWindowMax,
-                         format: "%.0f ms",
-                         identifier: "param.dedupCCWindowMs",
-                         hint: "Drops repeated control changes and pitch bends within this many milliseconds")
         }
         .padding(10)
         .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.04)))

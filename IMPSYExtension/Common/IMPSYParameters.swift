@@ -20,10 +20,9 @@ enum ParameterDefaults {
     static let piTemp: Float     = 1.0
     static let timescale: Float  = 1.0
     static let inputThru: Float  = 1.0   // on by default
-    // Output dedup windows. RNN output for a given dimension is suppressed when
-    // it would re-emit the same MIDI value within this window. 0 disables.
+    // Note dedup window. An RNN note for a given dimension is suppressed when
+    // it would replay the same note within this window. 0 disables.
     static let dedupNoteWindowMs: Float = 30.0
-    static let dedupCCWindowMs:   Float = 30.0
 }
 
 enum ParameterRanges {
@@ -50,7 +49,8 @@ enum StateKey {
     static let logFolderName    = "impsy.logFolderName"      // String: display path
     static let loggingEnabled   = "impsy.loggingEnabled"     // Float: 0/1
     static let dedupNoteWindowMs = "impsy.dedupNoteWindowMs" // Float: 0–500 ms
-    static let dedupCCWindowMs   = "impsy.dedupCCWindowMs"   // Float: 0–500 ms (also covers pitch bend)
+    // "impsy.dedupCCWindowMs" (CC / pitch-bend dedup window) was removed when
+    // unchanged CCs stopped being resent at all (impsy#110); restore ignores it.
 }
 
 // MARK: - IMPSY Model Constants

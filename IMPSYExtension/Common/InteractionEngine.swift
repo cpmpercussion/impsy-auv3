@@ -52,11 +52,11 @@ final class InteractionEngine: @unchecked Sendable {
     var piTemp: Float     = ParameterDefaults.piTemp
     var timescale: Float  = ParameterDefaults.timescale
     var inputThru: Bool   = ParameterDefaults.inputThru > 0.5
-    // Output dedup windows (milliseconds). Applied to the RNN response output
+    // Note dedup window (milliseconds). Applied to the RNN response output
     // only; the inputThru echo passes through unfiltered so the user's own
-    // playing is never gated by the model's emission history.
+    // playing is never gated by the model's emission history. Unchanged CC
+    // and pitch bend values are never resent (MIDIMapper, impsy#110).
     var dedupNoteWindowMs: Float = ParameterDefaults.dedupNoteWindowMs
-    var dedupCCWindowMs:   Float = ParameterDefaults.dedupCCWindowMs
 
     // Session logger (set once by the AU after init; nil in test contexts).
     // All calls happen on the inference queue; the logger marshals onto its
@@ -337,7 +337,8 @@ final class InteractionEngine: @unchecked Sendable {
     // them with IMPSY's pipeline.json and playback.json vectors.
 
     struct IngestResult {
-        /// `inputVector` after each mapped packet, one 'interface' log row each.
+        /// `inputVector` after each mapped packet, one 'interface' log row
+        /// each. A packet mapped to several dimensions is one row (impsy#102).
         var logRows: [[Float]]
         /// 0-based dimensions the packets touched, in order (may repeat).
         var touchedDimensions: [Int]
@@ -357,12 +358,15 @@ final class InteractionEngine: @unchecked Sendable {
         var touched: [Int] = []
         for packet in packets {
             packet.withUnsafeBytes { ptr, length in
-                guard let (index, value) = mapper.denseUpdate(fromBytes: ptr, length: length) else { return }
+                let updates = mapper.denseUpdate(fromBytes: ptr, length: length)
+                guard !updates.isEmpty else { return }
                 // index is 0-based into the user value dimensions
-                if index < inputVector.count {
-                    inputVector[index] = value
+                for (index, value) in updates {
+                    if index < inputVector.count {
+                        inputVector[index] = value
+                    }
+                    touched.append(index)
                 }
-                touched.append(index)
                 logRows.append(inputVector)
             }
         }
@@ -375,17 +379,16 @@ final class InteractionEngine: @unchecked Sendable {
 
     /// Turn one post-processed RNN output `[dt, v_1 … v_N]` into how long to
     /// wait before playing it, the values to play, and the next RNN seed.
+    /// Mirrors `prepare_rnn_playback` in ../impsy/impsy/interaction.py.
     static func prepareResponsePlayback(output: [Float], timescale: Float)
         -> (wait: Double, values: [Float], nextSeed: [Float]) {
-        // Apply the 1 ms scheduling floor before the timescale multiply so the
-        // value we schedule against matches what we feed back into the RNN.
-        // Mirrors `dt = max(dt, 0.001)` in ../impsy/impsy/interaction.py:485.
-        let rawDt = max(Double(output[0]), IMPSYConstants.responseLoopMinDt)
-        let dt = rawDt * Double(timescale)
+        // 1 ms floor stops accidental negative and zero dt.
+        let dt = max(Double(output[0]), IMPSYConstants.responseLoopMinDt)
         let values = Array(output.dropFirst())
-        // The next prediction is seeded with this event. Matching interaction.py,
-        // the timescaled dt is what gets fed back into the RNN.
-        return (dt, values, [Float(dt)] + values)
+        // Timescale only changes playback speed: the next prediction is
+        // seeded with the clamped, unscaled dt, so the model keeps seeing
+        // the timing it was trained on (impsy#103).
+        return (dt * Double(timescale), values, [Float(dt)] + values)
     }
 
     /// Drain note_off events for every channel with an outstanding note_on
@@ -436,8 +439,7 @@ final class InteractionEngine: @unchecked Sendable {
             let events = self.mapper.encodeOutput(
                 values: values,
                 now: now,
-                noteDedupWindow: TimeInterval(self.dedupNoteWindowMs) / 1000.0,
-                ccDedupWindow:   TimeInterval(self.dedupCCWindowMs)   / 1000.0
+                noteDedupWindow: TimeInterval(self.dedupNoteWindowMs) / 1000.0
             )
 
             // Emit this event's MIDI…
