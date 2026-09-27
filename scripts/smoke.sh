@@ -9,13 +9,14 @@
 #                                   # XCUITest suites (default: all)
 #
 # Env knobs:
-#   SIM_NAME      iOS simulator name (default: "iPhone 17")
+#   SIM_NAME      iOS simulator name (default: any available iOS simulator,
+#                 preferring a booted iPhone)
 #   ART_DIR       Where to drop screenshots and logs (default: /tmp/impsy-smoke)
 
 set -euo pipefail
 
 PROJECT="IMPSY-AUv3.xcodeproj"
-SIM_NAME="${SIM_NAME:-iPhone 17}"
+SIM_NAME="${SIM_NAME:-}"
 IOS_BUNDLE_ID="au.charlesmartin.impsy"
 IOS_SCHEME="IMPSYHost-iOS"
 MAC_SCHEME="IMPSYHost-macOS"
@@ -28,23 +29,38 @@ mkdir -p "$ART_DIR"
 log()  { echo "==> $*"; }
 fail() { echo "==> FAIL: $*" >&2; exit 1; }
 
+# Prints "<udid> <name>" for the chosen simulator. Honours SIM_NAME if set;
+# otherwise prefers a booted iPhone, then any iPhone, then any iOS device.
 resolve_sim() {
-  xcrun simctl list devices available \
-    | grep "$SIM_NAME (" \
-    | head -1 \
-    | grep -oE '[0-9A-F-]{36}'
+  local devices
+  devices=$(xcrun simctl list devices available \
+    | awk '/^-- /{ios = ($0 ~ /^-- iOS /)} ios && /\([0-9A-F-]{36}\)/')
+  local line
+  if [ -n "$SIM_NAME" ]; then
+    line=$(echo "$devices" | grep -F "$SIM_NAME (" | head -1)
+  else
+    line=$(echo "$devices" | grep 'iPhone' | grep '(Booted)' | head -1)
+    [ -z "$line" ] && line=$(echo "$devices" | grep 'iPhone' | head -1)
+    [ -z "$line" ] && line=$(echo "$devices" | head -1)
+  fi
+  [ -z "$line" ] && return 0
+  local id name
+  id=$(echo "$line" | grep -oE '[0-9A-F-]{36}')
+  name=$(echo "$line" | sed -E 's/^[[:space:]]*//; s/ \([0-9A-F-]{36}\).*//')
+  echo "$id $name"
 }
 
 # ── iOS smoke ────────────────────────────────────────────────────────────────
 
 smoke_ios() {
-  local sim_id
-  sim_id=$(resolve_sim)
-  [ -z "$sim_id" ] && fail "No '$SIM_NAME' simulator found"
+  local sim sim_id sim_name
+  sim=$(resolve_sim)
+  [ -z "$sim" ] && fail "No ${SIM_NAME:+'$SIM_NAME' }iOS simulator found"
+  sim_id=${sim%% *}; sim_name=${sim#* }
   xcrun simctl boot "$sim_id" 2>/dev/null || true
   xcrun simctl bootstatus "$sim_id" -b >/dev/null
 
-  log "Building $IOS_SCHEME for $SIM_NAME ($sim_id)"
+  log "Building $IOS_SCHEME for $sim_name ($sim_id)"
   xcodebuild build -project "$PROJECT" -scheme "$IOS_SCHEME" \
     -destination "platform=iOS Simulator,id=$sim_id" \
     -derivedDataPath "$DD" CODE_SIGNING_ALLOWED=NO 2>&1 | tail -1
@@ -132,10 +148,11 @@ run_tests() {
   local rc=0
 
   if [ "$which" = "ios" ] || [ "$which" = "all" ]; then
-    local sim_id
-    sim_id=$(resolve_sim)
-    [ -z "$sim_id" ] && fail "No '$SIM_NAME' simulator found"
-    log "Running IMPSYUITests-iOS on $SIM_NAME"
+    local sim sim_id sim_name
+    sim=$(resolve_sim)
+    [ -z "$sim" ] && fail "No ${SIM_NAME:+'$SIM_NAME' }iOS simulator found"
+    sim_id=${sim%% *}; sim_name=${sim#* }
+    log "Running IMPSYUITests-iOS on $sim_name ($sim_id)"
     xcodebuild test -project "$PROJECT" -scheme "$IOS_SCHEME" \
       -destination "platform=iOS Simulator,id=$sim_id" \
       -only-testing:IMPSYUITests-iOS \
