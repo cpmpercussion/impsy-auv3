@@ -59,14 +59,6 @@ final class ConformanceTests: XCTestCase {
     /// "file::case". Remove an entry once the AUv3 matches.
     static let knownDivergences: [String: Divergence] = [
         // ── MIDI input ────────────────────────────────────────────────────
-        // AUv3 note_on input matches one fixed note number (default 60 on
-        // TOML import) and uses velocity as the value; IMPSY matches any
-        // note on the channel and uses note / 127.
-        "midi_input::note_on_value_is_pitch": .mismatch("note_on input decodes velocity, not pitch"),
-        "midi_input::channels_are_one_based_in_config": .mismatch("note_on input decodes velocity, not pitch"),
-        "midi_input::fixed_velocity_note_input": .mismatch("note_on input decodes velocity, not pitch; 3-element note_on not parsed"),
-        // AUv3 treats velocity-0 note-on as a value of 0, not a note-off.
-        "midi_input::note_on_velocity_zero": .mismatch("velocity-0 note-on is not ignored"),
         // AUv3 decode stops at the first matching mapping.
         "midi_input::same_cc_with_different_ranges": .mismatch("a message only updates the first matching dimension"),
         "midi_input::duplicate_mapping_sets_every_dimension": .mismatch("a message only updates the first matching dimension"),
@@ -86,9 +78,7 @@ final class ConformanceTests: XCTestCase {
         // only); IMPSY suppresses any CC/pitch bend equal to the last sent.
         "midi_output::unchanged_cc_and_pitch_bend_not_resent": .mismatch("unchanged CC / pitch bend values are resent"),
         // ── Pipeline ──────────────────────────────────────────────────────
-        "pipeline::sparse_midi_to_dense_model_input": .mismatch("note_on input decodes velocity, not pitch"),
-        "pipeline::one_message_is_one_interaction": .mismatch("note_on input decodes velocity, not pitch; first-match decode"),
-        "pipeline::ignored_messages_do_not_reset_dt": .mismatch("note_on input decodes velocity, not pitch"),
+        "pipeline::one_message_is_one_interaction": .mismatch("a message only updates the first matching dimension"),
         "pipeline::note_and_velocity_are_one_interaction": .unsupportedMapping("note_velocity mapping type not supported"),
         // ── Playback ──────────────────────────────────────────────────────
         // AUv3 feeds the timescaled dt back to the RNN; IMPSY feeds the
