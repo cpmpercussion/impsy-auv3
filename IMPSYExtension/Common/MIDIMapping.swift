@@ -6,12 +6,18 @@ enum MIDIMessageType: String, Codable, CaseIterable {
     case noteOn        = "noteOn"
     case controlChange = "controlChange"
     case pitchBend     = "pitchBend"
+    /// A note-on's velocity. On input, a note-on sets every `noteOn` dim on
+    /// its channel to the pitch and every `noteVelocity` dim to the velocity;
+    /// on output, it sets the velocity of the channel's notes and sends
+    /// nothing itself. Matches IMPSY's `note_velocity` (impsy#98).
+    case noteVelocity  = "noteVelocity"
 
     var displayName: String {
         switch self {
         case .noteOn:        return "Note On"
         case .controlChange: return "CC"
         case .pitchBend:     return "Pitch Bend"
+        case .noteVelocity:  return "Velocity"
         }
     }
 
@@ -19,8 +25,8 @@ enum MIDIMessageType: String, Codable, CaseIterable {
     /// doesn't: the note number *is* the value, on input and output alike.
     var usesNumber: Bool {
         switch self {
-        case .controlChange:      return true
-        case .noteOn, .pitchBend: return false
+        case .controlChange:                    return true
+        case .noteOn, .pitchBend, .noteVelocity: return false
         }
     }
 }
@@ -36,6 +42,10 @@ struct DimensionMapping: Codable, Identifiable, Equatable {
     var channel: Int
     /// CC number (0–127) for controlChange; ignored for noteOn (pitch is the value) and pitchBend
     var number: Int
+    /// Fixed output velocity for noteOn (IMPSY's `["note_on", ch, velocity]`),
+    /// clamped to 1–127 when sent. nil sends 127. A `noteVelocity` dim on the
+    /// same channel overrides it. Unused on input.
+    var velocity: Int? = nil
     /// Lower bound of the CC range (0–127). Currently only consulted for
     /// `controlChange` — matches IMPSY's 5-tuple TOML form
     /// `["control_change", ch, cc, min, max]`.
@@ -64,13 +74,14 @@ struct DimensionMapping: Codable, Identifiable, Equatable {
     // absent so pre-#24 mappings keep their previous behaviour.
 
     private enum CodingKeys: String, CodingKey {
-        case id, messageType, channel, number, minValue, maxValue, enabled
+        case id, messageType, channel, number, velocity, minValue, maxValue, enabled
     }
 
     init(id: Int,
          messageType: MIDIMessageType,
          channel: Int,
          number: Int,
+         velocity: Int? = nil,
          minValue: Int = 0,
          maxValue: Int = 127,
          enabled: Bool = true) {
@@ -78,6 +89,7 @@ struct DimensionMapping: Codable, Identifiable, Equatable {
         self.messageType = messageType
         self.channel = channel
         self.number = number
+        self.velocity = velocity
         self.minValue = minValue
         self.maxValue = maxValue
         self.enabled = enabled
@@ -89,6 +101,7 @@ struct DimensionMapping: Codable, Identifiable, Equatable {
         messageType = try c.decode(MIDIMessageType.self, forKey: .messageType)
         channel     = try c.decode(Int.self, forKey: .channel)
         number      = try c.decode(Int.self, forKey: .number)
+        velocity    = try c.decodeIfPresent(Int.self, forKey: .velocity)
         minValue    = try c.decodeIfPresent(Int.self, forKey: .minValue) ?? 0
         maxValue    = try c.decodeIfPresent(Int.self, forKey: .maxValue) ?? 127
         enabled     = try c.decodeIfPresent(Bool.self, forKey: .enabled) ?? true
@@ -97,11 +110,12 @@ struct DimensionMapping: Codable, Identifiable, Equatable {
 
 extension DimensionMapping {
     /// Map a 7-bit MIDI CC value through this mapping's min/max range into
-    /// the model's normalised [0, 1] space.
+    /// the model's normalised [0, 1] space. Like `midi_to_value` in
+    /// ../impsy/impsy/utils.py, an inverted range (min > max) is allowed.
     func normalize(ccValue raw: Int) -> Float {
         let span = maxValue - minValue
         guard span != 0 else { return 0 }
-        let clamped = max(minValue, min(maxValue, raw))
+        let clamped = max(min(minValue, maxValue), min(max(minValue, maxValue), raw))
         return Float(clamped - minValue) / Float(span)
     }
 
@@ -215,6 +229,24 @@ struct MIDIMappingSet: Codable, Equatable {
         let m = outputMappings.remove(at: src)
         outputMappings.insert(m, at: dst)
         renumberOutputs()
+    }
+
+    /// The input dimension (0-based) holding the other half of a note-on for
+    /// the input at `index`: the first enabled `noteVelocity` dim on its
+    /// channel for a `noteOn`, or the first enabled `noteOn` dim for a
+    /// `noteVelocity`. nil for other types or when there isn't one.
+    func companionInputIndex(for index: Int) -> Int? {
+        guard inputMappings.indices.contains(index) else { return nil }
+        let mapping = inputMappings[index]
+        let pairedType: MIDIMessageType
+        switch mapping.messageType {
+        case .noteOn:       pairedType = .noteVelocity
+        case .noteVelocity: pairedType = .noteOn
+        default:            return nil
+        }
+        return inputMappings.firstIndex {
+            $0.enabled && $0.messageType == pairedType && $0.channel == mapping.channel
+        }
     }
 
     private mutating func renumberInputs() {

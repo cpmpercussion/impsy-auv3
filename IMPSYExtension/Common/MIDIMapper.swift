@@ -38,23 +38,32 @@ struct MIDIEvent {
 // MARK: - MIDIMapper
 
 /// Translates between raw MIDI bytes and normalised [0,1] dimension values.
+///
+/// Follows IMPSY Python (../impsy/impsy/utils.py): decode is
+/// `midi_message_to_updates`, encode is `MidiOutputState`.
 struct MIDIMapper {
 
-    var mappings: MIDIMappingSet
+    var mappings: MIDIMappingSet {
+        didSet { if mappings.outputMappings != oldValue.outputMappings { resetOutputState() } }
+    }
 
-    // Last note_on number emitted per output channel (0–15). Used to insert a
-    // note_off for the previous note before each new note_on so each channel
-    // behaves monophonically — matching IMPSY's reference impsio behaviour
-    // (../impsy/impsy/impsio.py: note_off-before-note_on per channel).
-    private var lastNotes: [UInt8: UInt8] = [:]
+    // Output note state, per output dimension (0-based index) in the order
+    // the notes started, so all-notes-off matches IMPSY's order. Each entry
+    // is (dimension, 0-based channel, note).
+    private var sounding: [(dim: Int, channel: UInt8, note: UInt8)] = []
 
-    // Per-output-dimension last emission (raw MIDI value + time). Only written
-    // by the dedup path on encodeOutput(values:now:…); used to suppress repeat
-    // emissions of the same MIDI value within a time window.
-    //   noteOn: rawMIDI = note number 0–127
-    //   controlChange: rawMIDI = CC value 0–127
-    //   pitchBend: rawMIDI = 14-bit value 0–16383
-    private var lastEmissions: [Int: (rawMIDI: Int, time: TimeInterval)] = [:]
+    // Last CC / pitch-bend value sent, so unchanged values aren't resent
+    // (impsy#110). Keyed per channel+controller (CC) or per channel (bend).
+    private enum SentKey: Hashable {
+        case cc(channel: UInt8, control: UInt8)
+        case pitchBend(channel: UInt8)
+    }
+    private var lastSent: [SentKey: Int] = [:]
+
+    // Per-output-dimension last note emission (note + time), for the note
+    // dedup window on encodeOutput(values:now:noteDedupWindow:). AUv3-only;
+    // IMPSY always sends notes (proposed upstream in cpmpercussion/impsy#123).
+    private var lastNoteEmissions: [Int: (note: UInt8, time: TimeInterval)] = [:]
 
     init(mappings: MIDIMappingSet) {
         self.mappings = mappings
@@ -62,41 +71,40 @@ struct MIDIMapper {
 
     // MARK: Decode (MIDI → normalised value)
 
-    /// Given raw MIDI bytes, returns `(dimensionIndex, normalizedValue)` if the message
-    /// matches any input mapping, or `nil` otherwise.
-    /// `dimensionIndex` is 1-based (matches model dimensions 1…N).
-    func decodeInput(bytes: UnsafePointer<UInt8>, length: Int) -> (Int, Float)? {
-        guard length >= 2 else { return nil }
+    /// Given raw MIDI bytes, returns every `(dimensionIndex, normalizedValue)`
+    /// update the message makes, in mapping order — empty if it matches no
+    /// input mapping. `dimensionIndex` is 1-based (matches model dims 1…N).
+    ///
+    /// A message sets every dimension it's mapped to (impsy#102), each CC
+    /// scaled by its own range (impsy#105). A note-on sets `noteOn` dims on
+    /// its channel to `note / 127` and `noteVelocity` dims to
+    /// `velocity / 127` (impsy#98); velocity-0 note-ons are note-offs and
+    /// set nothing (impsy#99).
+    func decodeInput(bytes: UnsafePointer<UInt8>, length: Int) -> [(Int, Float)] {
+        guard length >= 2 else { return [] }
         let status = bytes[0]
         let messageType = status & 0xF0
         let channel = Int(status & 0x0F) + 1
+        let data2 = length >= 3 ? bytes[2] : 0
 
+        var updates: [(Int, Float)] = []
         for mapping in mappings.inputMappings {
-            guard mapping.enabled else { continue }
-            guard mapping.channel == channel else { continue }
-            switch mapping.messageType {
-            case .noteOn:
-                // Matches IMPSY Python (`midi_message_to_index_value` in
-                // ../impsy/impsy/utils.py): any note on the mapped channel,
-                // with the note number (pitch) as the value. `mapping.number`
-                // is ignored. Deliberate deviation: velocity-0 note-ons are
-                // note-offs (running-status keyboards send them on release)
-                // and are skipped, so a key release isn't a second interaction.
-                guard messageType == 0x90, length >= 3, bytes[2] > 0 else { continue }
-                return (mapping.id, Float(bytes[1]) / 127.0)
-            case .controlChange:
-                guard messageType == 0xB0, bytes[1] == UInt8(mapping.number) else { continue }
-                let value = length >= 3 ? bytes[2] : 0
-                return (mapping.id, mapping.normalize(ccValue: Int(value)))
-            case .pitchBend:
-                guard messageType == 0xE0 else { continue }
-                let lsb = length >= 2 ? Int(bytes[1]) : 0
-                let msb = length >= 3 ? Int(bytes[2]) : 0
-                let raw = (msb << 7) | lsb   // 0–16383
-                return (mapping.id, Float(raw) / 16383.0)
+            guard mapping.enabled, mapping.channel == channel else { continue }
+            switch (mapping.messageType, messageType) {
+            case (.noteOn, 0x90) where length >= 3 && data2 > 0:
+                updates.append((mapping.id, Float(bytes[1]) / 127.0))
+            case (.noteVelocity, 0x90) where length >= 3 && data2 > 0:
+                updates.append((mapping.id, Float(data2) / 127.0))
+            case (.controlChange, 0xB0) where bytes[1] == UInt8(mapping.number & 0x7F):
+                updates.append((mapping.id, mapping.normalize(ccValue: Int(data2))))
+            case (.pitchBend, 0xE0):
+                let raw = (Int(data2) << 7) | Int(bytes[1])   // 0–16383
+                updates.append((mapping.id, Float(raw) / 16383.0))
+            default:
+                continue
             }
         }
-        return nil
+        return updates
     }
 
     // MARK: Encode (normalised value → MIDI)
@@ -104,26 +112,32 @@ struct MIDIMapper {
     /// Given a model output vector (index 0 = dim 1), produce MIDI events for each dimension.
     /// `values` is 0-based: values[0] → dimension 1, values[1] → dimension 2, etc.
     ///
-    /// For note_on outputs, a note_off for the previously emitted note on the
-    /// same channel is inserted before the new note_on, keeping each channel
-    /// monophonic.
+    /// Matches IMPSY's `MidiOutputState.messages`:
+    ///   - Notes are tracked per dimension, so note dims sharing a channel
+    ///     play together. Before a dim plays a new note its previous note is
+    ///     turned off, unless another dim on that channel still holds it.
+    ///   - A note's velocity comes from the first `noteVelocity` dim on its
+    ///     channel (`max(1, round(v * 127))`), else the mapping's fixed
+    ///     velocity, else 127. `noteVelocity` dims send nothing themselves.
+    ///   - CC and pitch bend are only sent when their MIDI value differs from
+    ///     the last one sent to that channel (and controller). Notes are
+    ///     always sent.
     ///
     /// When `dimensions` is non-nil, only output mappings at those indices are
     /// emitted — used by the inputThru path so moving one input echoes through
     /// only its own output mapping, not every dimension's.
     ///
-    /// When `now` is non-nil and the corresponding window is > 0, a dimension's
-    /// event is suppressed if it would re-emit the same MIDI value within that
-    /// window — `noteDedupWindow` for note_on, `ccDedupWindow` for CC and pitch
-    /// bend. A suppressed Note On also omits its paired note_off so the held
-    /// note keeps ringing rather than being chopped to silence.
+    /// When `now` is non-nil and `noteDedupWindow` > 0, a note dimension is
+    /// suppressed if it would replay the same note within that window
+    /// (AUv3-only, response output only). A suppressed note also omits its
+    /// note-off so the held note keeps ringing rather than being chopped.
     mutating func encodeOutput(values: [Float],
                                 dimensions: Set<Int>? = nil,
                                 now: TimeInterval? = nil,
-                                noteDedupWindow: TimeInterval = 0,
-                                ccDedupWindow: TimeInterval = 0) -> [MIDIEvent] {
+                                noteDedupWindow: TimeInterval = 0) -> [MIDIEvent] {
         var events: [MIDIEvent] = []
-        for (i, mapping) in mappings.outputMappings.enumerated() {
+        let outputs = mappings.outputMappings
+        for (i, mapping) in outputs.enumerated() {
             guard i < values.count else { break }
             guard mapping.enabled else { continue }
             if let dimensions, !dimensions.contains(i) { continue }
@@ -132,77 +146,115 @@ struct MIDIMapper {
 
             switch mapping.messageType {
             case .noteOn:
-                let note = UInt8(clamping: Int(v * 127.0 + 0.5))
+                let note = UInt8(clamping: Self.midiValue(v))
                 if let now, noteDedupWindow > 0,
-                   let last = lastEmissions[i],
-                   last.rawMIDI == Int(note),
+                   let last = lastNoteEmissions[i],
+                   last.note == note,
                    (now - last.time) < noteDedupWindow {
                     continue
                 }
-                if let previous = lastNotes[ch] {
-                    events.append(MIDIEvent(0x80 | ch, previous, 0))
+                if let p = sounding.firstIndex(where: { $0.dim == i }) {
+                    let previous = sounding.remove(at: p)
+                    let heldElsewhere = sounding.contains {
+                        $0.channel == previous.channel && $0.note == previous.note
+                    }
+                    if !heldElsewhere {
+                        events.append(MIDIEvent(0x80 | previous.channel, previous.note, 0))
+                    }
                 }
-                events.append(MIDIEvent(0x90 | ch, note, 64))
-                lastNotes[ch] = note
-                if let now { lastEmissions[i] = (Int(note), now) }
+                let velocity = Self.velocity(for: mapping, outputs: outputs, values: values)
+                events.append(MIDIEvent(0x90 | ch, note, velocity))
+                sounding.append((i, ch, note))
+                if let now { lastNoteEmissions[i] = (note, now) }
+            case .noteVelocity:
+                continue
             case .controlChange:
-                let ccVal = UInt8(clamping: mapping.denormalize(toCCValue: v))
-                if let now, ccDedupWindow > 0,
-                   let last = lastEmissions[i],
-                   last.rawMIDI == Int(ccVal),
-                   (now - last.time) < ccDedupWindow {
-                    continue
-                }
-                events.append(MIDIEvent(0xB0 | ch, UInt8(mapping.number & 0x7F), ccVal))
-                if let now { lastEmissions[i] = (Int(ccVal), now) }
+                let ccVal = mapping.denormalize(toCCValue: v)
+                let control = UInt8(mapping.number & 0x7F)
+                guard changed(.cc(channel: ch, control: control), to: ccVal) else { continue }
+                events.append(MIDIEvent(0xB0 | ch, control, UInt8(clamping: ccVal)))
             case .pitchBend:
                 let raw = Int(v * 16383.0 + 0.5)
-                if let now, ccDedupWindow > 0,
-                   let last = lastEmissions[i],
-                   last.rawMIDI == raw,
-                   (now - last.time) < ccDedupWindow {
-                    continue
-                }
-                let lsb = UInt8(raw & 0x7F)
-                let msb = UInt8((raw >> 7) & 0x7F)
-                events.append(MIDIEvent(0xE0 | ch, lsb, msb))
-                if let now { lastEmissions[i] = (raw, now) }
+                guard changed(.pitchBend(channel: ch), to: raw) else { continue }
+                events.append(MIDIEvent(0xE0 | ch, UInt8(raw & 0x7F), UInt8((raw >> 7) & 0x7F)))
             }
         }
         return events
     }
 
-    /// Emit a note_off for every channel that currently has an outstanding
-    /// note_on, then forget them. Call at mode/model transitions so that the
-    /// last RNN-emitted note does not hang on the receiving synth.
+    /// Emit a note_off for every sounding (channel, note), in the order the
+    /// notes started, then forget them. Also forgets the last CC and pitch
+    /// bend values, so the next step sends them all. Call at mode/model
+    /// transitions so the last RNN-emitted note does not hang on the
+    /// receiving synth. Matches IMPSY's `MidiOutputState.all_notes_off`.
     mutating func releaseAllNotes() -> [MIDIEvent] {
-        // Sorted by channel so the order is deterministic (Dictionary
-        // iteration order isn't).
-        let offs = lastNotes.sorted { $0.key < $1.key }.map { ch, note in
-            MIDIEvent(0x80 | ch, note, 0)
+        var offs: [MIDIEvent] = []
+        var seen = Set<UInt16>()
+        for s in sounding where seen.insert(UInt16(s.channel) << 8 | UInt16(s.note)).inserted {
+            offs.append(MIDIEvent(0x80 | s.channel, s.note, 0))
         }
-        lastNotes.removeAll()
-        // Mode/model transitions reset the world for the next response chain,
-        // so the dedup clock should also restart.
-        lastEmissions.removeAll()
+        resetOutputState()
         return offs
+    }
+
+    private mutating func resetOutputState() {
+        sounding.removeAll()
+        lastSent.removeAll()
+        lastNoteEmissions.removeAll()
+    }
+
+    /// Record `value` as sent to `key`; false if it's the same as last time.
+    private mutating func changed(_ key: SentKey, to value: Int) -> Bool {
+        if lastSent[key] == value { return false }
+        lastSent[key] = value
+        return true
+    }
+
+    /// `value_to_midi` in ../impsy/impsy/utils.py for the full 0–127 range.
+    private static func midiValue(_ v: Float) -> Int {
+        Int(v.clamped(to: 0...1) * 127.0 + 0.5)
+    }
+
+    /// A note's output velocity: the first enabled `noteVelocity` dim on its
+    /// channel, else the mapping's fixed velocity, else 127.
+    private static func velocity(for mapping: DimensionMapping,
+                                 outputs: [DimensionMapping],
+                                 values: [Float]) -> UInt8 {
+        if let index = outputs.firstIndex(where: {
+            $0.enabled && $0.messageType == .noteVelocity && $0.channel == mapping.channel
+        }), index < values.count {
+            // velocity 0 would be a note-off
+            return UInt8(max(1, midiValue(values[index])))
+        }
+        if let fixed = mapping.velocity {
+            return UInt8(min(max(fixed, 1), 127))
+        }
+        return 127
     }
 
     // MARK: Single-mapping encode (used for UI-driven direct input)
 
     /// Encode a normalised value (clamped to 0…1) as a MIDI event using the
     /// given mapping. Round-trip safe: feeding the result through
-    /// `decodeInput(bytes:length:)` returns the same dimension and a 7-bit
+    /// `decodeInput(bytes:length:)` sets the mapping's dimension to a 7-bit
     /// (or 14-bit for pitch bend) quantised approximation of the value.
-    static func encode(value: Float, using mapping: DimensionMapping) -> MIDIEvent {
+    ///
+    /// A note-on carries both a pitch and a velocity, so `noteOn` and
+    /// `noteVelocity` need the other half: `companion` is the normalised
+    /// velocity (for `noteOn`) or pitch (for `noteVelocity`). Without one,
+    /// a note plays at velocity 127 and a velocity plays note 60.
+    static func encode(value: Float, using mapping: DimensionMapping,
+                       companion: Float? = nil) -> MIDIEvent {
         let v = max(0, min(1, value))
         let ch = UInt8(mapping.channel - 1) & 0x0F
         switch mapping.messageType {
         case .noteOn:
-            // Pitch carries the value, as in decodeInput and encodeOutput.
             // Velocity must be non-zero or decodeInput treats it as note-off.
-            let note = UInt8(min(127, max(0, Int(v * 127.0 + 0.5))))
-            return MIDIEvent(0x90 | ch, note, 64)
+            let velocity = companion.map { max(1, midiValue($0)) } ?? 127
+            return MIDIEvent(0x90 | ch, UInt8(midiValue(v)), UInt8(velocity))
+        case .noteVelocity:
+            let note = companion.map { midiValue($0) } ?? 60
+            return MIDIEvent(0x90 | ch, UInt8(note), UInt8(max(1, midiValue(v))))
         case .controlChange:
             let ccVal = UInt8(min(127, max(0, mapping.denormalize(toCCValue: v))))
             return MIDIEvent(0xB0 | ch, UInt8(mapping.number & 0x7F), ccVal)
@@ -216,11 +268,11 @@ struct MIDIMapper {
 
     // MARK: Dense vector helpers
 
-    /// Build a dense input vector (length = dimension - 1) from an incoming MIDI event.
-    /// Returns a sparse update: only the affected dimension index (0-based) and its value.
-    func denseUpdate(fromBytes bytes: UnsafePointer<UInt8>, length: Int) -> (Int, Float)? {
-        guard let (dimID, value) = decodeInput(bytes: bytes, length: length) else { return nil }
-        return (dimID - 1, value)   // convert 1-based dimID to 0-based array index
+    /// The sparse updates an incoming MIDI event makes to the dense input
+    /// vector (length = dimension - 1): 0-based indices and their values.
+    func denseUpdate(fromBytes bytes: UnsafePointer<UInt8>, length: Int) -> [(Int, Float)] {
+        // convert 1-based dimIDs to 0-based array indices
+        decodeInput(bytes: bytes, length: length).map { ($0.0 - 1, $0.1) }
     }
 }
 

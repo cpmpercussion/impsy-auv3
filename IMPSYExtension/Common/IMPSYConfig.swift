@@ -168,9 +168,17 @@ extension IMPSYConfig {
             // the dimension's value on input, and the model output drives
             // the emitted note number on output. The AUv3 `number` field is
             // unused for noteOn; it keeps a placeholder 60 (middle C).
+            // A third element is a fixed output velocity (impsy#98).
             return DimensionMapping(
                 id: dimensionID, messageType: .noteOn,
-                channel: channel, number: 60
+                channel: channel, number: 60,
+                velocity: entry.count >= 3 ? entry[2].int : nil
+            )
+
+        case "note_velocity":
+            return DimensionMapping(
+                id: dimensionID, messageType: .noteVelocity,
+                channel: channel, number: 0
             )
 
         case "control_change":
@@ -274,7 +282,8 @@ extension IMPSYConfig {
     }
 
     /// IMPSY's positional entry format:
-    ///   noteOn          → ["note_on", channel]
+    ///   noteOn          → ["note_on", channel]            (or ["note_on", channel, velocity])
+    ///   noteVelocity    → ["note_velocity", channel]
     ///   controlChange   → ["control_change", channel, cc]    (or 5-tuple if range)
     ///   pitchBend       → ["pitch_bend", channel]
     private func makeMappingEntry(_ m: DimensionMapping) -> TOMLArray {
@@ -282,6 +291,12 @@ extension IMPSYConfig {
         switch m.messageType {
         case .noteOn:
             arr.append("note_on")
+            arr.append(m.channel)
+            if let velocity = m.velocity {
+                arr.append(velocity)
+            }
+        case .noteVelocity:
+            arr.append("note_velocity")
             arr.append(m.channel)
         case .controlChange:
             arr.append("control_change")

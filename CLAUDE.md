@@ -141,7 +141,7 @@ The five parameters are also in the `AUParameterTree` (addresses 0–4) for host
 | Threshold | 0 | 0.1–10.0 s | 0.1 |
 | Sigma Temp | 1 | 0.001–2.0 | 0.01 |
 | Pi Temp | 2 | 0.1–5.0 | 1.0 |
-| Timescale | 3 | 0.1–4.0× | 1.0 |
+| Timescale | 3 | 0.1–4.0× (playback only; the model is fed back the unscaled dt) | 1.0 |
 | MIDI Thru | 4 | 0 / 1 (boolean) | 1 (on) |
 
 **MIDI Thru** mirrors `input_thru` in IMPSY Python (`../impsy/impsy/interaction.py:415`): when on, every mapped user MIDI input re-encodes the current input vector through the output mappings and emits MIDI immediately, in addition to feeding the RNN. Turn off when the user's controller already drives the synth directly.
@@ -150,9 +150,14 @@ Defaults match `configs/AiC-charles-u6midipro.toml` in the IMPSY repo.
 
 ## MIDI mapping conventions
 
-- **Note On**: normalised = `note / 127.0` (pitch; any note on the mapped channel, velocity ignored except velocity-0 note-ons are skipped as note-offs). Matches IMPSY Python. The mapping's `number` is unused for Note On
-- **CC**: normalised = `value / 127.0`
+Decode follows `midi_message_to_updates` and encode follows `MidiOutputState` in `../impsy/impsy/utils.py`.
+
+- **Note On** (`note_on`): normalised = `note / 127.0` (pitch; any note on the mapped channel). Velocity-0 note-ons are note-offs and set nothing. The mapping's `number` is unused. On output, notes are tracked per dimension (note dims sharing a channel are polyphonic; a dim turns off only its own previous note, unless another dim still holds it) and sent at velocity 127, or the mapping's fixed `velocity` (`["note_on", ch, velocity]`, clamped 1–127)
+- **Velocity** (`note_velocity`): on input, a note-on sets every Note On dim on its channel to the pitch and every Velocity dim to `velocity / 127.0`, as one interaction. On output it sends nothing itself; it sets the velocity of its channel's notes to `max(1, round(v × 127))`, overriding a fixed velocity
+- **CC**: normalised = `value / 127.0`, or scaled from the mapping's `min`–`max` range
 - **Pitch Bend**: normalised = `(rawValue + 8192) / 16383.0`
+- One message sets **every** dimension it's mapped to, as a single interaction (one model input, one log row)
+- On output, CC and pitch bend are only sent when the MIDI value differs from the last one sent to that channel (+controller); all-notes-off forgets them. Notes are always sent, except for the AUv3-only note dedup window (`dedupNoteWindowMs`, response output only; on hold pending cpmpercussion/impsy#123). The old CC dedup window's `fullState` key (`impsy.dedupCCWindowMs`) is ignored on restore
 - Dimension IDs are 1-based (dim 0 is time, not user-configurable)
 - Input and output mappings are independent (`MIDIMappingSet.inputMappings` / `.outputMappings`)
 
