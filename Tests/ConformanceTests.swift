@@ -26,46 +26,75 @@ final class ConformanceTests: XCTestCase {
     /// Float32 can't hold the vectors' float64 values to 1e-9.
     static let float32Tolerance = 1e-6
 
+    /// How a known divergence is expected to fail. Only that kind of failure
+    /// is accepted; any other error in the case (a missing resource, a parse
+    /// failure) still fails the test.
+    enum Divergence {
+        /// The runner completes and its output differs from `expected`.
+        case mismatch(String)
+        /// IMPSYConfig can't load one of the case's mappings.
+        case unsupportedMapping(String)
+
+        var reason: String {
+            switch self {
+            case .mismatch(let r), .unsupportedMapping(let r): return r
+            }
+        }
+        /// Failure-message tag this divergence accepts.
+        var tag: String {
+            switch self {
+            case .mismatch: return FailureTag.mismatch
+            case .unsupportedMapping: return FailureTag.unsupportedMapping
+            }
+        }
+    }
+
+    enum FailureTag {
+        static let mismatch = "[mismatch]"
+        static let unsupportedMapping = "[unsupported mapping]"
+        static let error = "[error]"
+    }
+
     /// Cases where the AUv3 knowingly differs from IMPSY, keyed by
     /// "file::case". Remove an entry once the AUv3 matches.
-    static let knownDivergences: [String: String] = [
+    static let knownDivergences: [String: Divergence] = [
         // ── MIDI input ────────────────────────────────────────────────────
         // AUv3 note_on input matches one fixed note number (default 60 on
         // TOML import) and uses velocity as the value; IMPSY matches any
         // note on the channel and uses note / 127.
-        "midi_input::note_on_value_is_pitch": "note_on input decodes velocity, not pitch",
-        "midi_input::channels_are_one_based_in_config": "note_on input decodes velocity, not pitch",
-        "midi_input::fixed_velocity_note_input": "note_on input decodes velocity, not pitch; 3-element note_on not parsed",
+        "midi_input::note_on_value_is_pitch": .mismatch("note_on input decodes velocity, not pitch"),
+        "midi_input::channels_are_one_based_in_config": .mismatch("note_on input decodes velocity, not pitch"),
+        "midi_input::fixed_velocity_note_input": .mismatch("note_on input decodes velocity, not pitch; 3-element note_on not parsed"),
         // AUv3 treats velocity-0 note-on as a value of 0, not a note-off.
-        "midi_input::note_on_velocity_zero": "velocity-0 note-on is not ignored",
+        "midi_input::note_on_velocity_zero": .mismatch("velocity-0 note-on is not ignored"),
         // AUv3 decode stops at the first matching mapping.
-        "midi_input::same_cc_with_different_ranges": "a message only updates the first matching dimension",
-        "midi_input::duplicate_mapping_sets_every_dimension": "a message only updates the first matching dimension",
-        "midi_input::note_velocity_pairs_with_notes": "note_velocity mapping type not supported",
+        "midi_input::same_cc_with_different_ranges": .mismatch("a message only updates the first matching dimension"),
+        "midi_input::duplicate_mapping_sets_every_dimension": .mismatch("a message only updates the first matching dimension"),
+        "midi_input::note_velocity_pairs_with_notes": .unsupportedMapping("note_velocity mapping type not supported"),
         // ── MIDI output ───────────────────────────────────────────────────
         // AUv3 sends note-ons at velocity 64; IMPSY uses 127.
-        "midi_output::note_and_cc_encoding": "note-on velocity 64, not 127",
-        "midi_output::monophonic_note_offs": "note-on velocity 64, not 127",
-        "midi_output::all_notes_off": "note-on velocity 64, not 127",
-        "midi_output::values_clipped_to_unit_range": "note-on velocity 64, not 127",
-        "midi_output::output_boundary_values": "note-on velocity 64, not 127",
+        "midi_output::note_and_cc_encoding": .mismatch("note-on velocity 64, not 127"),
+        "midi_output::monophonic_note_offs": .mismatch("note-on velocity 64, not 127"),
+        "midi_output::all_notes_off": .mismatch("note-on velocity 64, not 127"),
+        "midi_output::values_clipped_to_unit_range": .mismatch("note-on velocity 64, not 127"),
+        "midi_output::output_boundary_values": .mismatch("note-on velocity 64, not 127"),
         // AUv3 tracks the last note per channel, not per dimension.
-        "midi_output::polyphonic_notes_on_one_channel": "note-offs are tracked per channel, not per dimension",
-        "midi_output::note_velocity_output": "note_velocity mapping type not supported",
-        "midi_output::fixed_velocity_output": "3-element note_on (fixed velocity) not parsed",
+        "midi_output::polyphonic_notes_on_one_channel": .mismatch("note-offs are tracked per channel, not per dimension"),
+        "midi_output::note_velocity_output": .unsupportedMapping("note_velocity mapping type not supported"),
+        "midi_output::fixed_velocity_output": .unsupportedMapping("3-element note_on (fixed velocity) not parsed"),
         // AUv3 suppresses repeats within a time window (response output
         // only); IMPSY suppresses any CC/pitch bend equal to the last sent.
-        "midi_output::unchanged_cc_and_pitch_bend_not_resent": "unchanged CC / pitch bend values are resent",
+        "midi_output::unchanged_cc_and_pitch_bend_not_resent": .mismatch("unchanged CC / pitch bend values are resent"),
         // ── Pipeline ──────────────────────────────────────────────────────
-        "pipeline::sparse_midi_to_dense_model_input": "note_on input decodes velocity, not pitch",
-        "pipeline::one_message_is_one_interaction": "note_on input decodes velocity, not pitch; first-match decode",
-        "pipeline::ignored_messages_do_not_reset_dt": "note_on input decodes velocity, not pitch",
-        "pipeline::note_and_velocity_are_one_interaction": "note_velocity mapping type not supported",
+        "pipeline::sparse_midi_to_dense_model_input": .mismatch("note_on input decodes velocity, not pitch"),
+        "pipeline::one_message_is_one_interaction": .mismatch("note_on input decodes velocity, not pitch; first-match decode"),
+        "pipeline::ignored_messages_do_not_reset_dt": .mismatch("note_on input decodes velocity, not pitch"),
+        "pipeline::note_and_velocity_are_one_interaction": .unsupportedMapping("note_velocity mapping type not supported"),
         // ── Playback ──────────────────────────────────────────────────────
         // AUv3 feeds the timescaled dt back to the RNN; IMPSY feeds the
         // unscaled dt (impsy#103).
-        "playback::timescale_and_clamping": "timescaled dt fed back to the model",
-        "playback::slower_timescale": "timescaled dt fed back to the model",
+        "playback::timescale_and_clamping": .mismatch("timescaled dt fed back to the model"),
+        "playback::slower_timescale": .mismatch("timescaled dt fed back to the model"),
     ]
 
     /// Vector files that describe IMPSY features the AUv3 doesn't have.
@@ -132,16 +161,19 @@ final class ConformanceTests: XCTestCase {
                         let actual = try runner(testCase)
                         let expected = testCase["expected"] ?? .null
                         if let diff = JSON.mismatch(actual, expected, tolerance: tolerance) {
-                            XCTFail("\(id): \(diff)")
+                            XCTFail("\(FailureTag.mismatch) \(id): \(diff)")
                         }
+                    } catch let error as UnsupportedMapping {
+                        XCTFail("\(FailureTag.unsupportedMapping) \(id): \(error)")
                     } catch {
-                        XCTFail("\(id): \(error)")
+                        XCTFail("\(FailureTag.error) \(id): \(error)")
                     }
                 }
-                if let reason = Self.knownDivergences[id] {
+                if let divergence = Self.knownDivergences[id] {
                     let options = XCTExpectedFailure.Options()
                     options.isStrict = true
-                    XCTExpectFailure("\(id): \(reason)", options: options, failingBlock: check)
+                    options.issueMatcher = { $0.compactDescription.contains(divergence.tag) }
+                    XCTExpectFailure("\(id): \(divergence.reason)", options: options, failingBlock: check)
                 } else {
                     check()
                 }
@@ -307,7 +339,7 @@ final class ConformanceTests: XCTestCase {
         // later dimension. Report that rather than compare misaligned values.
         let (inCount, outCount) = (input?.array?.count ?? 0, output?.array?.count ?? 0)
         guard config.inputMappings.count == inCount, config.outputMappings.count == outCount else {
-            throw ConformanceError("mapping not supported by IMPSYConfig: \(input ?? .null) / \(output ?? .null)")
+            throw UnsupportedMapping(input: input, output: output)
         }
         return MIDIMappingSet(inputMappings: config.inputMappings,
                               outputMappings: config.outputMappings)
@@ -344,6 +376,15 @@ final class ConformanceTests: XCTestCase {
 struct ConformanceError: Error, CustomStringConvertible {
     let description: String
     init(_ description: String) { self.description = description }
+}
+
+/// IMPSYConfig dropped a mapping entry it couldn't parse.
+struct UnsupportedMapping: Error, CustomStringConvertible {
+    let input: JSON?
+    let output: JSON?
+    var description: String {
+        "mapping not supported by IMPSYConfig: \(input ?? .null) / \(output ?? .null)"
+    }
 }
 
 /// Minimal JSON value for reading vectors and building actual results.
