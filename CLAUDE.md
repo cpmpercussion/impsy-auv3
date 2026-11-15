@@ -24,53 +24,6 @@ xcodegen generate
 
 **Signing** — set Development Team on all 4 targets in Xcode after generating.
 
-## Project structure
-
-```
-project.yml                          ← xcodegen spec (source of truth for Xcode project)
-IMPSYExtension/Common/               ← shared by iOS + macOS extension targets
-IMPSYExtension/iOS/                  ← iOS extension Info.plist + entitlements
-IMPSYExtension/macOS/                ← macOS extension Info.plist + entitlements
-IMPSYHost/iOS/                       ← container iOS app (required by App Store)
-IMPSYHost/macOS/                     ← container macOS app
-IMPSYUI/                             ← SwiftUI views + view model (shared by app + extension)
-Packages/TensorFlowLite/             ← local Swift package vending TFLite (binary xcframework + Swift wrapper)
-Tests/                               ← unit tests (run on macOS target)
-scripts/build_tflite_xcframework.sh  ← assembles Packages/TensorFlowLite/Frameworks/TensorFlowLiteC.xcframework
-```
-
-## Key files and responsibilities
-
-### Core logic (`IMPSYExtension/Common/`)
-
-| File | Responsibility |
-|------|---------------|
-| `IMPSYParameters.swift` | `ParameterAddress` enum, defaults, ranges, `StateKey` constants |
-| `MIDIMapping.swift` | `MIDIMessageType`, `DimensionMapping`, `MIDIMappingSet` — all `Codable` |
-| `MIDIMapper.swift` | MIDI bytes ↔ normalised `[0,1]` Float conversion; `encodeOutput(values:)` / `denseUpdate(fromBytes:)` |
-| `MDNSampler.swift` | Pure-Swift MDN sampling: softmax-with-temperature, categorical sampling, Box-Muller normal, post-processing (÷10, clamp, min dt) |
-| `RingBuffer.swift` | `MIDIRingBuffer` — `os_unfair_lock`-based SPSC ring buffer for render-thread ↔ inference-queue hand-off |
-| `ModelInspector.swift` | Reads `.tflite` tensor names/shapes → `ModelConfig { dimension, numLayers, hiddenUnits, numMixtures }` |
-| `TFLiteRNN.swift` | Wraps TFLite `Interpreter`; manages LSTM states; `generate(input:piTemp:sigmaTemp:) -> [Float]` |
-| `InteractionEngine.swift` | Call-and-response loop: 10ms `DispatchSourceTimer` on `"impsy.inference"` queue; drains input buffer, runs TFLiteRNN, schedules output via `asyncAfter` |
-| `IMPSYAudioUnit.swift` | `AUAudioUnit` subclass; `scheduleMIDIEventBlock` (MIDI in → ring buffer); `internalRenderBlock` (drain output ring buffer → `midiOutputEventBlock`) |
-| `IMPSYAudioUnit+Parameters.swift` | `AUParameterTree` with 4 parameters (threshold, sigmaTemp, piTemp, timescale) |
-| `IMPSYAudioUnit+State.swift` | `fullState` serialization/restore; model loading from security-scoped bookmarks |
-| `IMPSYAudioUnit+MIDI.swift` | `requestViewController` — returns `IMPSYViewController` |
-
-### UI (`IMPSYUI/`)
-
-| File | Responsibility |
-|------|---------------|
-| `IMPSYViewModel.swift` | `@MainActor ObservableObject`; bridges AU parameter tree ↔ SwiftUI; handles model loading and mapping saves |
-| `IMPSYMainView.swift` | Root SwiftUI view + `IMPSYViewController` (iOS/macOS `AUViewController` subclass) |
-| `ModelStatusView.swift` | Model filename, status indicator, Load button |
-| `ParameterControlsView.swift` | Four sliders (threshold, sigmaTemp, piTemp, timescale) |
-| `MappingEditorView.swift` | Segmented input/output tab + scrollable per-dimension mapping rows |
-| `ModelPickerButton.swift` | `UIDocumentPickerViewController` (iOS) / `NSOpenPanel` (macOS) wrapped as SwiftUI button |
-| `MIDIEndpointStore.swift` | UI-facing model of host MIDI device connections; no CoreMIDI imports (IMPSYUI compiles into the extensions). Populated/acted-on by `CoreMIDIBridge` |
-| `MIDIConnectionView.swift` | Input/Output device pickers on the Settings screen; hidden in the AUv3 extension (store is nil there) |
-
 ## Architecture: threading model
 
 ```
@@ -111,29 +64,6 @@ The engine initialises to match `../impsy/impsy/mdrnn.py` and `interaction.py`:
 
 The reference Python implementation is in `../impsy/impsy/mdrnn.py` (class `TfliteMDRNN`).
 
-## AU registration
-
-| Field | Value |
-|-------|-------|
-| Type | `aumi` (MIDI Processor) |
-| Subtype | `impy` |
-| Manufacturer | `CpM!` |
-| Name | `Charles Martin: IMPSY` |
-| Principal class | `IMPSYAudioUnit` |
-
-## State persistence (`fullState`)
-
-Non-automatable state lives in `fullState` (serialized by the host on session save):
-
-| Key | Type | Content |
-|-----|------|---------|
-| `impsy.modelBookmark` | `Data` | Security-scoped URL bookmark |
-| `impsy.inputMappings` | `Data` | JSON `[DimensionMapping]` |
-| `impsy.outputMappings` | `Data` | JSON `[DimensionMapping]` |
-| `impsy.threshold/sigmaTemp/piTemp/timescale/inputThru` | `Float` | Parameter values |
-
-The five parameters are also in the `AUParameterTree` (addresses 0–4) for host automation.
-
 ## AU Parameters
 
 | Name | Address | Range | Default |
@@ -147,6 +77,8 @@ The five parameters are also in the `AUParameterTree` (addresses 0–4) for host
 **MIDI Thru** mirrors `input_thru` in IMPSY Python (`../impsy/impsy/interaction.py:415`): when on, every mapped user MIDI input re-encodes the current input vector through the output mappings and emits MIDI immediately, in addition to feeding the RNN. Turn off when the user's controller already drives the synth directly.
 
 Defaults match `configs/AiC-charles-u6midipro.toml` in the IMPSY repo.
+
+All five parameters plus non-automatable state (model security-scoped bookmark, input/output mapping JSON) are persisted in `fullState` — keys in `StateKey` (`IMPSYParameters.swift`).
 
 ## MIDI mapping conventions
 
@@ -187,25 +119,7 @@ xcodebuild test -project IMPSY-AUv3.xcodeproj -scheme IMPSYHost-macOS -configura
 
 ## Common tasks
 
-**Regenerate Xcode project after editing `project.yml`:**
-```bash
-xcodegen generate
-```
-
-**Rebuild the TFLite xcframework** (after editing `scripts/build_tflite_xcframework.sh` or bumping versions):
-```bash
-./scripts/build_tflite_xcframework.sh
-```
-The script is also run by `ci_scripts/ci_post_clone.sh` so Xcode Cloud builds pick up a fresh xcframework before SPM resolution.
-
-**Add a new AU parameter:**
-1. Add case to `ParameterAddress` enum in `IMPSYParameters.swift`
-2. Add defaults/ranges to `ParameterDefaults`/`ParameterRanges`
-3. Add `createParameter` call in `IMPSYAudioUnit+Parameters.swift`
-4. Handle in `implementorValueObserver` and `implementorValueProvider`
-5. Add property to `InteractionEngine` and wire it up
-6. Add `StateKey` and handle in `IMPSYAudioUnit+State.swift`
-7. Add `@Published` property and sync in `IMPSYViewModel`
+`scripts/build_tflite_xcframework.sh` is also run by `ci_scripts/ci_post_clone.sh` so Xcode Cloud builds pick up a fresh xcframework before SPM resolution.
 
 **Load a model for testing:**
 Copy any `.tflite` from `../impsy/models/` to a location accessible via Files app, then use the Load Model button in the plugin UI.
