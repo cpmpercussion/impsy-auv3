@@ -17,6 +17,7 @@ final class HostWindowController: NSWindowController {
 
     private var audioUnit: IMPSYAudioUnit?
     private var midiBridge: CoreMIDIBridge?
+    private var session: HostSession?
     private let bridgeStatusLabel = NSTextField(labelWithString: "")
     // Strong reference: when we set `window.contentView` directly (instead of
     // `contentViewController`), the window does not retain the VC and its
@@ -66,6 +67,11 @@ final class HostWindowController: NSWindowController {
             let au = try IMPSYAudioUnit(componentDescription: desc, options: [])
             audioUnit = au
 
+            // Bring back the last session (model, mappings, parameters) before
+            // the UI attaches, so the view model starts from the restored state.
+            session = HostSession(audioUnit: au)
+            session?.restore()
+
             // Exercise the real host lifecycle in-process (also starts the engine).
             do {
                 try au.allocateRenderResources()
@@ -102,10 +108,25 @@ final class HostWindowController: NSWindowController {
                 w.center()
             }
             HostTestHooks.apply(to: au)
+            session?.startAutosave()
         } catch {
             window?.title = "IMPSY — Init error: \(error.localizedDescription)"
             NSLog("[IMPSY] AU init failed: %@", String(describing: error))
         }
+    }
+
+    // MARK: - Termination
+
+    /// Called as the app quits: save the session, then release every note the
+    /// engine still has sounding so nothing is left ringing on the receiving
+    /// synth once IMPSY is gone.
+    func prepareForTermination() {
+        session?.save()
+        guard let au = audioUnit else { return }
+        au.engine.stop()
+        au.engine.silence()
+        midiBridge?.flushOutput()
+        midiBridge?.stop()
     }
 
     // MARK: - Core MIDI bridge

@@ -28,9 +28,15 @@ class IMPSYUITestCase: XCTestCase {
         modelB64: String? = nil,
         configB64: String? = nil,
         logFolder: URL? = nil,
-        injectHz: Double? = nil
+        injectHz: Double? = nil,
+        session: String = "off",
+        resetSession: Bool = false
     ) -> XCUIApplication {
         let app = XCUIApplication()
+        // Tests expect a factory-fresh app unless they opt into a (test-only,
+        // namespaced) saved session.
+        app.launchEnvironment[UITestEnvKeys.session] = session
+        if resetSession { app.launchEnvironment[UITestEnvKeys.sessionReset] = "1" }
         if let modelB64 { app.launchEnvironment[UITestEnvKeys.modelB64] = modelB64 }
         if let configB64 { app.launchEnvironment[UITestEnvKeys.configB64] = configB64 }
         if let logFolder { app.launchEnvironment[UITestEnvKeys.logFolder] = logFolder.path }

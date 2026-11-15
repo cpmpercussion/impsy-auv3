@@ -12,4 +12,9 @@ enum UITestEnvKeys {
     static let configB64  = "IMPSY_TEST_CONFIG_B64"
     static let logFolder  = "IMPSY_TEST_LOG_FOLDER"
     static let injectHz   = "IMPSY_TEST_INJECT_INPUT_HZ"
+    /// `off` disables session save/restore; any other value namespaces the
+    /// saved session (see HostSession in the host target).
+    static let session    = "IMPSY_TEST_SESSION"
+    /// Present → discard any saved session at startup.
+    static let sessionReset = "IMPSY_TEST_SESSION_RESET"
 }

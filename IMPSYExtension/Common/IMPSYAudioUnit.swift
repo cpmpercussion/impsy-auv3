@@ -23,6 +23,14 @@ public final class IMPSYAudioUnit: AUAudioUnit {
     var _currentModelConfig: ModelConfig?
     var _currentModelDisplayName: String?
 
+    /// Where to keep a private copy of the user-loaded model's bytes. Only the
+    /// standalone hosts set this (see HostSession): they restore their session
+    /// from the copy, so a relaunch doesn't depend on the security-scoped
+    /// bookmark still resolving — the original file may have been moved,
+    /// renamed, or be on a drive that's no longer plugged in. Nil in the
+    /// AUv3 plugin, where the bookmark in `fullState` is the only source.
+    var modelCacheURL: URL?
+
     // Session-logging state (folder bookmark + on/off + display path)
     var _logFolderBookmarkData: Data?
     var _logFolderDisplayPath: String?

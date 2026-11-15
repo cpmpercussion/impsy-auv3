@@ -43,6 +43,7 @@ final class ScreenshotCaptureTests: IMPSYUITestCase {
             let app = XCUIApplication()
             app.launchEnvironment[UITestEnvKeys.modelB64]  = model
             app.launchEnvironment[UITestEnvKeys.configB64] = config
+            app.launchEnvironment[UITestEnvKeys.session]   = "off"
             #if os(macOS)
             app.launchEnvironment["IMPSY_TEST_APPEARANCE"] = appearance
             #endif

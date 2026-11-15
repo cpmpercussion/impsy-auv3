@@ -12,7 +12,7 @@ An AUv3 MIDI Processor plugin that runs the [IMPSY](https://github.com/cpmpercus
 - Runs in **call-and-response mode**: when you pause playing, the RNN generates MIDI responses; when you play, the RNN listens
 - Each model dimension maps to a configurable MIDI message (Note On, CC, or Pitch Bend) — inputs and outputs mapped independently, importable/exportable as TOML compatible with the IMPSY Python toolkit
 - Ships with a bundled 9-dimensional default model, and loads any `.tflite` IMPSY model (dimension and layer count are read from the model file)
-- The host apps also run **standalone**: they publish `IMPSY In` / `IMPSY Out` Core MIDI virtual ports and connect directly to MIDI hardware, so IMPSY can be played without a DAW (or route DAWs that don't host `aumi` plugins, like Ableton Live, through it)
+- The host apps also run **standalone**: they publish `IMPSY In` / `IMPSY Out` Core MIDI virtual ports and connect directly to MIDI hardware, so IMPSY can be played without a DAW (or route DAWs that don't host `aumi` plugins, like Ableton Live, through it). The standalone app restores its last session (model, mappings, parameters) on launch
 - Optionally records **session logs** in the IMPSY Python `.log` format, ready for the IMPSY training pipeline
 
 ## Requirements

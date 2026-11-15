@@ -117,6 +117,26 @@ final class InteractionEngine: @unchecked Sendable {
         }
     }
 
+    /// Stop the current response and queue a note-off for every note still
+    /// sounding, returning once they are in `outputBuffer`. The engine is left
+    /// in call mode, as if the user had just played, so if it keeps running a
+    /// new response starts after the usual threshold.
+    ///
+    /// For hosts about to stop delivering MIDI (app quit or suspension):
+    /// without it the last notes ring on the receiving synth indefinitely.
+    func silence() {
+        inferenceQueue.sync {
+            responseGeneration &+= 1
+            flushAllNoteOffs()
+            lastUserInputTime = ProcessInfo.processInfo.systemUptime
+            guard callResponseState != .call else { return }
+            callResponseState = .call
+            DispatchQueue.main.async { [weak self] in
+                self?.onStateChanged?(.call)
+            }
+        }
+    }
+
     // MARK: - MIDI Input (called from render thread)
 
     /// Enqueue a raw MIDI packet from the render thread.

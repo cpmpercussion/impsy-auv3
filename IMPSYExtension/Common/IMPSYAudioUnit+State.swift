@@ -157,6 +157,7 @@ extension IMPSYAudioUnit {
             _currentModelConfig       = config
             _currentModelDisplayName  = url.lastPathComponent
             _modelBookmarkData        = bookmark
+            cacheModelData(modelData)
 
             // Mapping count is decoupled from model dim: leave the existing
             // mappings alone. Excess rows beyond model dim are ignored; missing
@@ -186,7 +187,12 @@ extension IMPSYAudioUnit {
     static let defaultModelName = "default-dim9"
 
     /// Loads the bundled default 9D model from the extension's resource bundle.
-    func loadBundledDefaultModel() {
+    ///
+    /// - Parameter applyDefaultMappings: give the 9D model its AiC mapping.
+    ///   True for a fresh instance; false when restoring saved state, whose
+    ///   mappings must survive (they were silently replaced by the defaults
+    ///   whenever a saved session used the bundled model).
+    func loadBundledDefaultModel(applyDefaultMappings: Bool = true) {
         let bundle = Bundle(for: IMPSYAudioUnit.self)
         guard let url = bundle.url(forResource: Self.defaultModelName, withExtension: "tflite") else {
             NSLog("[IMPSY] Bundled model '%@.tflite' not found in %@",
@@ -205,7 +211,7 @@ extension IMPSYAudioUnit {
             // U6MIDI Pro mapping by default. For any other dimension, keep
             // whatever mappings are already configured (they may be empty;
             // the user can add rows manually).
-            let updated = config.dimension == 9
+            let updated = applyDefaultMappings && config.dimension == 9
                 ? MIDIMappingSet.aicU6MIDIProDefault()
                 : _currentMappings
             _currentMappings = updated
@@ -332,12 +338,47 @@ extension IMPSYAudioUnit {
             _modelBookmarkData = bookmark
             resolveAndLoadModel(from: bookmark)
         } else {
-            loadBundledDefaultModel()
+            _modelBookmarkData = nil
+            loadBundledDefaultModel(applyDefaultMappings: false)
+        }
+    }
+
+    /// Keep a private copy of a user-loaded model for `modelCacheURL` hosts.
+    private func cacheModelData(_ data: Data) {
+        guard let cacheURL = modelCacheURL else { return }
+        do {
+            try FileManager.default.createDirectory(
+                at: cacheURL.deletingLastPathComponent(),
+                withIntermediateDirectories: true)
+            try data.write(to: cacheURL, options: .atomic)
+        } catch {
+            NSLog("[IMPSY] Could not cache model at %@: %@",
+                  cacheURL.path, String(describing: error))
         }
     }
 
     private func resolveAndLoadModel(from bookmarkData: Data) {
+        let cacheURL = modelCacheURL
+        let cachedName = _currentModelDisplayName
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            // Standalone hosts: the private copy written by loadModel(url:) is
+            // always the model the session last had loaded, so prefer it to
+            // the bookmark (see `modelCacheURL`).
+            if let cacheURL,
+               let modelData = try? Data(contentsOf: cacheURL),
+               let config = try? ModelInspector.inspect(modelData: modelData) {
+                let name = cachedName ?? cacheURL.lastPathComponent
+                self?._currentModelConfig = config
+                self?.engine.loadModel(modelData: modelData, displayName: name, config: config)
+                DispatchQueue.main.async {
+                    NotificationCenter.default.post(name: .IMPSYModelStatusChanged,
+                                                    object: self,
+                                                    userInfo: ["status": "ready",
+                                                               "config": config,
+                                                               "name": name])
+                }
+                return
+            }
             do {
                 var isStale = false
                 #if os(macOS)
