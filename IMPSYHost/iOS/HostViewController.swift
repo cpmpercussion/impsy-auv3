@@ -12,6 +12,7 @@ final class HostViewController: UIViewController {
 
     private var audioUnit: IMPSYAudioUnit?
     private var midiBridge: CoreMIDIBridge?
+    private var session: HostSession?
     private let statusLabel = UILabel()
 
     override func viewDidLoad() {
@@ -35,6 +36,11 @@ final class HostViewController: UIViewController {
         do {
             let au = try IMPSYAudioUnit(componentDescription: desc, options: [])
             audioUnit = au
+
+            // Bring back the last session (model, mappings, parameters) before
+            // the UI attaches, so the view model starts from the restored state.
+            session = HostSession(audioUnit: au)
+            session?.restore()
 
             // Exercise the real host lifecycle in-process (also starts the engine).
             do {
@@ -60,10 +66,42 @@ final class HostViewController: UIViewController {
             statusLabel.removeFromSuperview()
             embed(viewController: vc)
             HostTestHooks.apply(to: au)
+            session?.startAutosave()
+            observeAppLifecycle()
         } catch {
             statusLabel.text = "Failed to create IMPSY AU:\n\(error.localizedDescription)"
             print("[IMPSY] AU init failed: \(error)")
         }
+    }
+
+    // MARK: - App lifecycle
+    //
+    // iOS suspends the app shortly after it leaves the foreground (and may
+    // then kill it without notice), so backgrounding is treated like quitting:
+    // save the session and release every sounding note, otherwise the last
+    // notes ring on the receiving synth. The engine is paused meanwhile so it
+    // can't start a new response in the moments before suspension.
+
+    private func observeAppLifecycle() {
+        let center = NotificationCenter.default
+        center.addObserver(self, selector: #selector(appIsGoingAway),
+                           name: UIApplication.didEnterBackgroundNotification, object: nil)
+        center.addObserver(self, selector: #selector(appIsGoingAway),
+                           name: UIApplication.willTerminateNotification, object: nil)
+        center.addObserver(self, selector: #selector(appWillEnterForeground),
+                           name: UIApplication.willEnterForegroundNotification, object: nil)
+    }
+
+    @objc private func appIsGoingAway() {
+        session?.save()
+        guard let au = audioUnit else { return }
+        au.engine.stop()
+        au.engine.silence()
+        midiBridge?.flushOutput()
+    }
+
+    @objc private func appWillEnterForeground() {
+        audioUnit?.engine.start()
     }
 
     // MARK: - UI

@@ -134,6 +134,12 @@ AUv3,MIDI,AI,improvisation,generative,music,MDRNN,Ableton,Logic,MainStage,synth,
 
 ## What's New in This Version (170 chars, per build)
 
+### 1.3 — macOS and iOS (170 chars)
+
+```
+MIDI mapping now matches IMPSY 1.2.1: velocity mappings and polyphonic notes. The standalone app remembers your model, mappings and settings and stops held notes on quit.
+```
+
 ### 1.2 — macOS (156 chars; covers 1.1 too, since the App Store went 1.0 → 1.2)
 
 ```

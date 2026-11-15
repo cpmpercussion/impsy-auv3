@@ -429,7 +429,6 @@
             <tr><td class="name">Timescale</td><td class="range">0.1 – 4.0×</td><td class="range">1.0×</td><td>Speeds up or slows down the response.</td></tr>
             <tr><td class="name">MIDI Thru</td><td class="range">on / off</td><td class="range">on</td><td>Pass your own MIDI through to the synth as well as into IMPSY.</td></tr>
             <tr><td class="name">Note Dedup</td><td class="range">0 – 500 ms</td><td class="range">30 ms</td><td>Suppress repeated identical notes inside this window. 0 turns it off.</td></tr>
-            <tr><td class="name">CC Dedup</td><td class="range">0 – 500 ms</td><td class="range">30 ms</td><td>Suppress repeated identical CC / pitch-bend values inside this window. 0 turns it off.</td></tr>
           </tbody>
         </table>
       </div>
@@ -451,7 +450,7 @@
         <p class="screen-caption">Dashboard — live state.</p>
       </div>
       <div class="col-6 col-md-4">
-        <div class="screen-frame"><img src="images/screens/impsy-iphone-settings.png" alt="Settings screen on iPhone: loaded model, four parameter sliders (Threshold, Sigma Temp, Pi Temp, Timescale), MIDI Thru toggle, Note/CC dedup sliders, MIDI device pickers, Import / Export TOML buttons, and session-log recording controls."></div>
+        <div class="screen-frame"><img src="images/screens/impsy-iphone-settings.png" alt="Settings screen on iPhone: loaded model, four parameter sliders (Threshold, Sigma Temp, Pi Temp, Timescale), MIDI Thru toggle, note dedup slider, MIDI device pickers, Import / Export TOML buttons, and session-log recording controls."></div>
         <p class="screen-caption">Settings — parameters, dedup, MIDI devices, TOML config, session logs.</p>
       </div>
       <div class="col-6 col-md-4">
@@ -523,7 +522,7 @@
       <div class="col-md-6 col-lg-4">
         <div class="feature-card">
           <h3>Standalone, too</h3>
-          <p>No audio I/O — IMPSY processes MIDI end-to-end. The standalone app publishes <code>IMPSY In</code> / <code>IMPSY Out</code> Core MIDI virtual ports and connects directly to hardware, so any DAW (Ableton Live included) can route through it, or you can play it with no DAW at all.</p>
+          <p>No audio I/O — IMPSY processes MIDI end-to-end. The standalone app publishes <code>IMPSY In</code> / <code>IMPSY Out</code> Core MIDI virtual ports and connects directly to hardware, so any DAW (Ableton Live included) can route through it, or you can play it with no DAW at all. It remembers your model, mappings and settings between launches.</p>
         </div>
       </div>
     </div>

@@ -375,6 +375,13 @@ final class CoreMIDIBridge {
         timer.resume()
     }
 
+    /// Send everything waiting in the engine's output buffer now, instead of
+    /// on the next timer tick. Call before `stop()` when quitting so queued
+    /// note-offs actually reach the receiving synth.
+    func flushOutput() {
+        drainQueue.sync { drainOutput() }
+    }
+
     private func drainOutput() {
         guard let engine = engine, virtualSource != 0 else { return }
         let packets = engine.outputBuffer.dequeueAll()
